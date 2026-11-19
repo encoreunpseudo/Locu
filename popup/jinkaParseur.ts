@@ -36,8 +36,9 @@ export class JinkaParseur extends ParseurAnnonce {
       arrondissement: this.extraireArrondissement(h1) ?? this.extraireArrondissement(secours),
       pieces: this.extrairePieces(this.texteSeul(doc, /^(\d+\s*pi[eè]ces?|studio)$/i) ?? doc.title),
       nbM2: this.extraireSurface(this.texteSeul(doc, /^\d+(?:[.,]\d+)?\s*m[²2]$/) ?? doc.title),
-      // L'absence de charges n'est pas une preuve de charges nulles.
-      prixMois: prix != null && charges != null ? prix - charges : undefined,
+      // Sans montant de charges, le prix affiché est pris comme loyer hors charges : hypothèse signalée.
+      prixMois: prix != null ? prix - (charges ?? 0) : undefined,
+      chargesInconnues: prix != null && charges == null,
       meuble: this.extraireMeuble(infos) ?? this.extraireMeuble(doc.title),
       epoque: this.extraireEpoque(infos),
     };

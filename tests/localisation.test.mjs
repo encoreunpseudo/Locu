@@ -183,12 +183,27 @@ test("Barème incomplet ou surface invalide : aucun verdict affirmatif", () => {
   }
 });
 
-test("Charges absentes : ne pas traiter automatiquement le prix CC comme hors charges", () => {
+test("Charges absentes : prix affiché pris comme hors charges, hypothèse signalée", () => {
   const dom = exemple(35);
   const h2 = [...dom.window.document.querySelectorAll("h2")].find((h) => h.textContent === "Description");
   h2.nextElementSibling.textContent = "Rue Fondary, appartement non meublé.";
-  assert.equal(new JinkaParseur().parser(dom.window.document).prixMois, undefined);
+  const logement = new JinkaParseur().parser(dom.window.document);
+  assert.equal(logement.prixMois, 1390);
+  assert.equal(logement.chargesInconnues, true);
   dom.window.close();
+});
+
+test("Charges absentes : charges minimales pour passer sous le plafond", () => {
+  // Plafonds 20 et 30 €/m² sur 50 m² : 1 000 € et 1 500 € /mois.
+  const depasse = calculerEncadrement({ prixMois: 1620.5, nbM2: 50, chargesInconnues: true }, lignesTest, localisationTest);
+  assert.equal(depasse.verdict, "depasse");
+  assert.equal(depasse.chargesMin, 121);
+  const conforme = calculerEncadrement({ prixMois: 900, nbM2: 50, chargesInconnues: true }, lignesTest, localisationTest);
+  assert.equal(conforme.verdict, "sous_plafonds");
+  assert.equal(conforme.chargesInconnues, true);
+  assert.equal(conforme.chargesMin, null);
+  const connues = calculerEncadrement({ prixMois: 1620.5, nbM2: 50 }, lignesTest, localisationTest);
+  assert.equal(connues.chargesMin, null);
 });
 
 test("Dépôt : uniquement des ressources locales, chargement unique et réessai après erreur", async (t) => {

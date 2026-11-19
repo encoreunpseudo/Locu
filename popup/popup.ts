@@ -40,12 +40,17 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
       logement.meuble == null ? "meublé ?" : logement.meuble ? "meublé" : "non meublé"
     }</li>`,
   ];
-  if (f.prixM2 != null) lignes.push(`<li>Annonce : <strong>${euros(logement.prixMois!)} /mois</strong> hors charges (${euros(f.prixM2)} /m²)</li>`);
+  if (f.prixM2 != null && f.chargesInconnues) {
+    lignes.push(`<li>Annonce : <strong>${euros(logement.prixMois!)} /mois</strong> (${euros(f.prixM2)} /m²)</li>`);
+    lignes.push('<li class="hypothese">Charges non indiquées : le prix affiché est considéré comme hors charges.</li>');
+  } else if (f.prixM2 != null) {
+    lignes.push(`<li>Annonce : <strong>${euros(logement.prixMois!)} /mois</strong> hors charges (${euros(f.prixM2)} /m²)</li>`);
+  }
 
   const epoques = [...f.parEpoque].sort((a, b) => ORDRE_EPOQUES.indexOf(a.epoque) - ORDRE_EPOQUES.indexOf(b.epoque));
   if (epoques.length > 1) {
     const rangees = epoques.map((e) => `<tr><td>${NOMS_EPOQUES[e.epoque]}</td><td>${parMois(e.max)}</td><td>${
-      e.depasse == null ? "?" : e.depasse ? "❌" : "✅"}</td></tr>`).join("");
+      e.depasse == null ? "?" : !e.depasse ? "✅" : e.chargesMin != null ? `❌ sauf charges ≥ ${euros(e.chargesMin)}` : "❌"}</td></tr>`).join("");
     lignes.push(`<li>Plafond selon l'année de construction (barème ${echapper(f.annee)}) :<table>${rangees}</table></li>`);
   } else {
     lignes.push(`<li>Plafond (barème ${echapper(f.annee)}) : <strong>${parMois(f.max)}</strong></li>`);
@@ -76,6 +81,13 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
 
   if (f.verdict === "inconnu") {
     afficher("inconnu", "Loyer hors charges ou surface introuvable", details);
+  } else if (f.verdict === "depasse" && f.chargesMin != null) {
+    // Le seuil dépend de l'époque quand elle est inconnue : donner la fourchette plutôt que le cas le plus favorable.
+    const seuils = epoques.map((e) => e.chargesMin).filter((c): c is number => c != null);
+    const pire = Math.max(...seuils);
+    afficher("depasse", epoques.length > 1 && pire > f.chargesMin
+      ? `Au-dessus du plafond, sauf si les charges sont d'au moins ${euros(f.chargesMin)} à ${euros(pire)} /mois selon l'année de construction`
+      : `Au-dessus du plafond, sauf si les charges sont d'au moins ${euros(f.chargesMin)} /mois`, details);
   } else if (f.verdict === "depasse") {
     afficher("depasse", "Au-dessus du plafond légal", details);
   } else if (conditionnel) {
@@ -83,7 +95,7 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
   } else if (f.verdict === "indetermine") {
     afficher("incertain", "Résultat indéterminé : des précisions sont nécessaires", details);
   } else {
-    afficher("ok", "Sous le plafond légal", details);
+    afficher("ok", "Dans l'encadrement des loyers", details);
   }
 }
 

@@ -23,6 +23,8 @@ export interface Logement {
   meuble?: boolean;
   annee?: number | string;
   prixMois?: number;
+  // Vrai si prixMois est le prix affiché, faute de montant de charges dans l'annonce
+  chargesInconnues?: boolean;
   nbM2?: number;
   indicesLocalisation?: IndicesLocalisation;
 }
@@ -47,7 +49,11 @@ export interface FourchetteEncadrement {
   champsManquants: ChampCritere[];
   nbChampsManquants: number;
   // Plafond le plus favorable au bailleur pour chaque époque possible (€/m²)
-  parEpoque: { epoque: Epoque; max: number; depasse: boolean | null }[];
+  // chargesMin : charges mensuelles qu'il faudrait pour passer sous ce plafond (charges inconnues)
+  parEpoque: { epoque: Epoque; max: number; depasse: boolean | null; chargesMin: number | null }[];
+  chargesInconnues: boolean;
+  // Charges qu'il faudrait pour passer sous le plafond le plus élevé (charges inconnues)
+  chargesMin: number | null;
 }
 
 type ChampCritere = "quartier" | "pieces" | "epoque" | "meuble";
@@ -111,12 +117,17 @@ export function calculerEncadrement(
   const prixM2 = logement.prixMois != null && Number.isFinite(logement.prixMois) && logement.prixMois >= 0 && surfaceValide
     ? logement.prixMois / logement.nbM2! : null;
   const verdict = prixM2 == null ? "inconnu" : prixM2 > max ? "depasse" : prixM2 <= plafondMin ? "sous_plafonds" : "indetermine";
+  const chargesInconnues = prixM2 != null && logement.chargesInconnues === true;
+  // Excédent du prix sur un plafond, arrondi à l'euro supérieur : ce que devraient valoir les charges.
+  const chargesPour = (plafondM2: number) =>
+    chargesInconnues && prixM2! > plafondM2 ? Math.ceil(logement.prixMois! - plafondM2 * logement.nbM2!) : null;
   const epoques = [...new Set(correspondances.map((l) => l.epoque))].sort();
   const parEpoque = epoques.map((epoque) => {
     const plafonds = correspondances.filter((l) => l.epoque === epoque).map((l) => l.max);
     const haut = Math.max(...plafonds);
     const bas = Math.min(...plafonds);
-    return { epoque, max: haut, depasse: prixM2 == null ? null : prixM2 > haut ? true : prixM2 <= bas ? false : null };
+    const depasse = prixM2 == null ? null : prixM2 > haut ? true : prixM2 <= bas ? false : null;
+    return { epoque, max: haut, depasse, chargesMin: depasse ? chargesPour(haut) : null };
   });
 
   return {
@@ -135,5 +146,7 @@ export function calculerEncadrement(
     champsManquants,
     nbChampsManquants: champsManquants.length,
     parEpoque,
+    chargesInconnues,
+    chargesMin: verdict === "depasse" ? chargesPour(max) : null,
   };
 }

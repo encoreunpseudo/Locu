@@ -39,6 +39,11 @@ h1 {
   font-size: 12px;
 }
 
+#details .hypothese {
+  color: #92400e;
+  font-size: 12px;
+}
+
 #details table {
   margin-top: 4px;
   border-collapse: collapse;
@@ -65,4 +70,5 @@ h1 {
   .resultat.incertain { background: #422006; color: #fef08a; }
   .resultat.depasse { background: #450a0a; color: #fecaca; }
   #details .manquants, #details details { color: #9ca3af; }
+  #details .hypothese { color: #fcd34d; }
 }
