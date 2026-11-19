@@ -10,13 +10,16 @@ const NOMS_CHAMPS: Record<string, string> = {
   meuble: "meublé / non meublé",
 };
 
-function afficher(classe: string, titre: string, details = "") {
+const ICONES: Record<string, string> = { ok: "✓", depasse: "✕", incertain: "?", inconnu: "i" };
+
+function afficher(classe: string, titre: string, details = "", sousTitre = "") {
   resultatEl.className = `resultat ${classe}`;
-  resultatEl.textContent = titre;
+  resultatEl.innerHTML = `<span class="icone">${ICONES[classe] ?? "i"}</span><div><div class="titre">${echapper(titre)}</div>${
+    sousTitre ? `<div class="sous-titre">${echapper(sousTitre)}</div>` : ""}</div>`;
   detailsEl.innerHTML = details;
 }
 
-const euros = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + " €";
+const euros = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + "\u00a0€";
 const echapper = (texte: string) => texte.replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
@@ -25,77 +28,108 @@ const NOMS_EPOQUES: Record<string, string> = {
   "Avant 1946": "avant 1946", "1946-1970": "entre 1946 et 1970",
   "1971-1990": "entre 1971 et 1990", "Apres 1990": "après 1990",
 };
+const LIBELLES_EPOQUES: Record<string, string> = {
+  "Avant 1946": "Avant 1946", "1946-1970": "1946 – 1970", "1971-1990": "1971 – 1990", "Apres 1990": "Après 1990",
+};
 
 // Le barème d'une année s'applique aux baux signés du 1er juillet au 30 juin suivant.
 function baremePerime(annee: string): boolean {
   return new Date() >= new Date(Number(annee) + 1, 6, 1);
 }
 
+const ecart = (n: number) => `${n > 0 ? "+" : "−"}${euros(Math.abs(Math.round(n)))}`;
+
 function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
-  const lieu = f.quartier ?? `${f.localisation.quartiers.length} quartiers possibles`;
   const surface = logement.nbM2;
-  const parMois = (m2: number) => surface ? `${euros(Math.round(m2 * surface))} /mois` : `${euros(m2)} /m²`;
-  const lignes = [
-    `<li>${echapper(lieu)} · ${logement.pieces ?? "?"} pièce(s) · ${surface ?? "?"} m² · ${
-      logement.meuble == null ? "meublé ?" : logement.meuble ? "meublé" : "non meublé"
-    }</li>`,
-  ];
-  if (f.prixM2 != null && f.chargesInconnues) {
-    lignes.push(`<li>Annonce : <strong>${euros(logement.prixMois!)} /mois</strong> (${euros(f.prixM2)} /m²)</li>`);
-    lignes.push('<li class="hypothese">Charges non indiquées : le prix affiché est considéré comme hors charges.</li>');
-  } else if (f.prixM2 != null) {
-    lignes.push(`<li>Annonce : <strong>${euros(logement.prixMois!)} /mois</strong> hors charges (${euros(f.prixM2)} /m²)</li>`);
-  }
-
+  const prix = f.prixM2 != null ? logement.prixMois! : null;
+  const mensuel = (m2: number) => surface ? m2 * surface : null;
   const epoques = [...f.parEpoque].sort((a, b) => ORDRE_EPOQUES.indexOf(a.epoque) - ORDRE_EPOQUES.indexOf(b.epoque));
-  if (epoques.length > 1) {
-    const rangees = epoques.map((e) => `<tr><td>${NOMS_EPOQUES[e.epoque]}</td><td>${parMois(e.max)}</td><td>${
-      e.depasse == null ? "?" : !e.depasse ? "✅" : e.chargesMin != null ? `❌ sauf charges ≥ ${euros(e.chargesMin)}` : "❌"}</td></tr>`).join("");
-    lignes.push(`<li>Plafond selon l'année de construction (barème ${echapper(f.annee)}) :<table>${rangees}</table></li>`);
-  } else {
-    lignes.push(`<li>Plafond (barème ${echapper(f.annee)}) : <strong>${parMois(f.max)}</strong></li>`);
-  }
-  if (f.localisation.quartiers.length > 1) {
-    const noms = f.localisation.quartiers.slice(0, 8).map((q) => echapper(q.nom)).join(", ");
-    lignes.push(`<li class="manquants">Quartier non déterminé, quartiers possibles : ${noms}${f.localisation.quartiers.length > 8 ? "…" : ""}.</li>`);
-  }
   const autresManquants = f.champsManquants.filter((c) => c !== "epoque" && c !== "quartier");
-  if (autresManquants.length) lignes.push(`<li class="manquants">Inconnu dans l'annonce : ${autresManquants.map((c) => NOMS_CHAMPS[c]).join(", ")}.</li>`);
-  if (baremePerime(f.annee)) {
-    lignes.push(`<li class="manquants">Barème ${echapper(f.annee)} périmé : un barème plus récent s'applique aux baux signés depuis le 1er juillet ${Number(f.annee) + 1}.</li>`);
+
+  // Pastilles : ce que l'extension a lu dans l'annonce
+  const arrondissement = f.arrondissement === 1 ? "1er" : `${f.arrondissement}e`;
+  const lieu = f.quartier ? `${f.quartier.replace(/ \d+Art$/, "")} · ${arrondissement}` : `Paris ${arrondissement}`;
+  const pastilles = [
+    lieu,
+    logement.pieces != null ? `${logement.pieces} pièce${logement.pieces > 1 ? "s" : ""}` : "pièces ?",
+    surface != null ? `${surface} m²` : "surface ?",
+    logement.meuble == null ? "meublé ?" : logement.meuble ? "Meublé" : "Non meublé",
+  ];
+  let html = `<div class="pastilles">${pastilles.map((p) => `<span>${echapper(p)}</span>`).join("")}</div>`;
+
+  // Loyer face au plafond
+  const plafondAffiche = mensuel(f.max);
+  html += `<div class="chiffres">
+    <div><div class="etiquette">${f.chargesInconnues ? "Prix affiché" : "Loyer hors charges"}</div>
+      <div class="valeur">${prix != null ? euros(prix) : "—"}</div>
+      <div class="unite">${f.prixM2 != null ? `${euros(f.prixM2)} /m²` : "loyer introuvable"}</div></div>
+    <div><div class="etiquette">${epoques.length > 1 ? "Plafond max" : "Plafond légal"}</div>
+      <div class="valeur">${plafondAffiche != null ? euros(Math.round(plafondAffiche)) : `${euros(f.max)} /m²`}</div>
+      <div class="unite">${euros(f.max)} /m²</div></div>
+  </div>`;
+
+  // Détail par époque, seulement si elle est inconnue
+  if (epoques.length > 1) {
+    const rangees = epoques.map((e) => {
+      const plafond = mensuel(e.max);
+      const difference = prix != null && plafond != null ? prix - plafond : null;
+      const badge = e.depasse == null || difference == null ? '<span class="badge neutre">?</span>'
+        : `<span class="badge ${e.depasse ? "rouge" : "vert"}">${ecart(difference)}</span>`;
+      return `<div class="rangee"><span>${LIBELLES_EPOQUES[e.epoque]}</span><span class="montant">${
+        plafond != null ? euros(Math.round(plafond)) : `${euros(e.max)} /m²`}</span>${badge}</div>`;
+    }).join("");
+    html += `<div class="section"><div class="etiquette">Plafond selon l'année de construction</div>${rangees}</div>`;
   }
 
-  for (const avertissement of f.localisation.avertissements) lignes.push(`<li class="manquants">${echapper(avertissement)}</li>`);
+  // Remarques : hypothèses en premier, puis limites des données
+  const remarques: { classe: string; texte: string }[] = [];
+  if (f.chargesInconnues) remarques.push({ classe: "hypothese", texte: "Charges non indiquées : le prix affiché est considéré comme hors charges." });
+  if (f.localisation.quartiers.length > 1) {
+    const noms = f.localisation.quartiers.slice(0, 8).map((q) => q.nom).join(", ");
+    remarques.push({ classe: "hypothese", texte: `Quartier non déterminé, quartiers possibles : ${noms}${f.localisation.quartiers.length > 8 ? "…" : ""}.` });
+  }
+  for (const avertissement of f.localisation.avertissements) remarques.push({ classe: "hypothese", texte: avertissement });
+  if (autresManquants.length) remarques.push({ classe: "info", texte: `Inconnu dans l'annonce : ${autresManquants.map((c) => NOMS_CHAMPS[c]).join(", ")}.` });
+  if (baremePerime(f.annee)) {
+    remarques.push({ classe: "info", texte: `Barème ${f.annee} périmé : un barème plus récent s'applique aux baux signés depuis le 1er juillet ${Number(f.annee) + 1}.` });
+  } else {
+    remarques.push({ classe: "info", texte: `Barème ${f.annee}.` });
+  }
+  html += remarques.map((r) => `<div class="remarque ${r.classe}">${echapper(r.texte)}</div>`).join("");
 
   // Les indices bruts n'intéressent que pour comprendre la localisation : repliés par défaut.
   const technique = f.localisation.indices
     .map((i) => `${i.source} : ${i.libelle}${i.quartiers.length ? "" : " (non reconnu)"}`);
-  const details = `<ul>${lignes.join("")}</ul>` + (technique.length
-    ? `<details><summary>Détails de localisation</summary><ul>${technique.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul></details>`
-    : "");
+  if (technique.length) {
+    html += `<details><summary>Détails de localisation</summary><ul>${technique.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul></details>`;
+  }
 
   // Si seule l'époque manque, la réponse utile est « dépasse sauf si construit … ».
   const conformes = epoques.filter((e) => e.depasse === false).map((e) => NOMS_EPOQUES[e.epoque]);
   const conditionnel = f.verdict === "indetermine" && autresManquants.length === 0 &&
     f.localisation.quartiers.length === 1 && epoques.every((e) => e.depasse != null);
+  const depassement = prix != null && plafondAffiche != null ? prix - plafondAffiche : null;
+  const marge = prix != null && surface ? f.plafondMin * surface - prix : null;
 
   if (f.verdict === "inconnu") {
-    afficher("inconnu", "Loyer hors charges ou surface introuvable", details);
+    afficher("inconnu", "Loyer ou surface introuvable dans l'annonce", html);
   } else if (f.verdict === "depasse" && f.chargesMin != null) {
     // Le seuil dépend de l'époque quand elle est inconnue : donner la fourchette plutôt que le cas le plus favorable.
     const seuils = epoques.map((e) => e.chargesMin).filter((c): c is number => c != null);
     const pire = Math.max(...seuils);
-    afficher("depasse", epoques.length > 1 && pire > f.chargesMin
-      ? `Au-dessus du plafond, sauf si les charges sont d'au moins ${euros(f.chargesMin)} à ${euros(pire)} /mois selon l'année de construction`
-      : `Au-dessus du plafond, sauf si les charges sont d'au moins ${euros(f.chargesMin)} /mois`, details);
+    afficher("depasse", "Au-dessus du plafond", html, epoques.length > 1 && pire > f.chargesMin
+      ? `Sauf si les charges sont d'au moins ${euros(f.chargesMin)} à ${euros(pire)} /mois selon l'année de construction`
+      : `Sauf si les charges sont d'au moins ${euros(f.chargesMin)} /mois`);
   } else if (f.verdict === "depasse") {
-    afficher("depasse", "Au-dessus du plafond légal", details);
+    afficher("depasse", "Au-dessus du plafond", html, depassement != null
+      ? `${epoques.length > 1 ? "Au moins " : ""}${euros(Math.round(depassement))} /mois de trop` : "");
   } else if (conditionnel) {
-    afficher("depasse", `Au-dessus du plafond, sauf si l'immeuble a été construit ${conformes.join(" ou ")}`, details);
+    afficher("depasse", "Au-dessus du plafond", html, `Sauf si l'immeuble a été construit ${conformes.join(" ou ")}`);
   } else if (f.verdict === "indetermine") {
-    afficher("incertain", "Résultat indéterminé : des précisions sont nécessaires", details);
+    afficher("incertain", "Résultat indéterminé", html, "L'annonce ne donne pas assez de précisions pour conclure");
   } else {
-    afficher("ok", "Dans l'encadrement des loyers", details);
+    afficher("ok", "Dans l'encadrement des loyers", html, marge != null && marge > 0
+      ? `${euros(Math.round(marge))} /mois sous le plafond` : "");
   }
 }
 

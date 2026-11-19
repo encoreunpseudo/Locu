@@ -243,11 +243,11 @@ test("Popup complet : annonce Jinka → fichiers locaux → verdict et texte éc
   window.eval(compilation.outputFiles[0].text);
   await new Promise((resolve) => setImmediate(resolve));
   // Quartier non reconnu : la position de l'annonce retrouve Javel, seule l'époque reste inconnue.
-  assert.match(window.document.getElementById("resultat").textContent, /sauf si l'immeuble a été construit après 1990/);
+  assert.match(window.document.getElementById("resultat").textContent, /sauf si l'immeuble a été construit après 1990/i);
   assert.match(window.document.getElementById("details").textContent, /position approximative/);
   assert.match(window.document.getElementById("details").textContent, /<img src=x/);
   assert.equal(window.document.querySelector("img"), null);
-  assert.match(window.document.getElementById("details").textContent, /barème 2025/);
+  assert.match(window.document.getElementById("details").textContent, /barème 2025/i);
   annonce.window.close();
   popup.window.close();
 });
