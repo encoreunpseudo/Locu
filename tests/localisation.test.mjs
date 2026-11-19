@@ -4,14 +4,30 @@ import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { build } from "esbuild";
 import {
-  DepotLocalisation, GeometrieLocale, LecteurJsonLd,
-  NormaliseurLieu, ReferentielQuartiers, ResolveurLocalisation,
+  DepotLocalisation, DetecteurLieux, GeometrieLocale, LecteurJsonLd,
+  NormaliseurLieu, ReferentielQuartiers, ResolveurLocalisation, SourcesLieux,
 } from "../popup/localisation.ts";
 import { JinkaParseur } from "../popup/jinkaParseur.ts";
 import { calculerEncadrement } from "../popup/checkEncadrementLoyers.ts";
 
 const geojson = JSON.parse(readFileSync("data/logement-encadrement-des-loyers.geojson", "utf8"));
 const baremes = geojson.features.map((f) => f.properties);
+const lieux = JSON.parse(readFileSync("tests/fixtures/lieux-paris15.json", "utf8"));
+// Répond comme les API ouvertes (Ville de Paris, IDFM) à partir d'extraits figés : aucun réseau dans les tests.
+function requeteFixe(appels = []) {
+  return async (url) => {
+    appels.push(url);
+    const u = decodeURIComponent(url);
+    const corps = u.includes("emplacement-des-gares") ? lieux.gares
+      : u.includes("geo_shape") ? lieux.traces[u.match(/typo_min="([^"]+)"/)[1]] ?? []
+      : lieux.voies;
+    return { ok: true, json: async () => corps };
+  };
+}
+function stockageMemoire() {
+  const valeurs = new Map();
+  return { valeurs, lire: async (cle) => valeurs.get(cle), ecrire: async (cle, valeur) => { valeurs.set(cle, valeur); } };
+}
 const quartiersParis = [...new Map(geojson.features.map(({ properties: p, geometry }) => [p.code_grand_quartier, {
   id: p.code_grand_quartier, nom: p.nom_quartier,
   arrondissement: Math.floor(p.code_grand_quartier / 100) % 100, geometrie: geometry,
@@ -206,7 +222,7 @@ test("Charges absentes : charges minimales pour passer sous le plafond", () => {
   assert.equal(connues.chargesMin, null);
 });
 
-test("Dépôt : uniquement des ressources locales, chargement unique et réessai après erreur", async (t) => {
+test("Dépôt : sans description, uniquement des ressources locales, chargement unique et réessai après erreur", async (t) => {
   const appels = [];
   let echec = true;
   t.mock.method(globalThis, "fetch", async (url) => {
@@ -235,8 +251,9 @@ test("Popup complet : annonce Jinka → fichiers locaux → verdict et texte éc
     runtime: { getURL: (p) => `chrome-extension://test/${p}` },
     tabs: { query: async () => [{ id: 1 }], sendMessage: async () => ({ logement }) },
   };
+  const lieuxEnLigne = requeteFixe();
   window.fetch = async (url) => {
-    assert.ok(url.startsWith("chrome-extension://test/data/"));
+    if (!url.startsWith("chrome-extension://test/data/")) return lieuxEnLigne(url);
     return { ok: true, json: async () => url.endsWith("encadrement.json") ? baremes : quartiersParis };
   };
   const compilation = await build({ entryPoints: ["popup/popup.ts"], bundle: true, write: false, format: "iife" });
@@ -245,9 +262,151 @@ test("Popup complet : annonce Jinka → fichiers locaux → verdict et texte éc
   // Quartier non reconnu : la position de l'annonce retrouve Javel, seule l'époque reste inconnue.
   assert.match(window.document.getElementById("resultat").textContent, /sauf si l'immeuble a été construit après 1990/i);
   assert.match(window.document.getElementById("details").textContent, /position approximative/);
+  assert.match(window.document.getElementById("details").textContent, /Station citée dans l'annonce : Charles Michels \(METRO 10\)/);
+  assert.match(window.document.getElementById("details").textContent, /Position estimée : Position de l'annonce \(à 150 m près\)/);
   assert.match(window.document.getElementById("details").textContent, /<img src=x/);
   assert.equal(window.document.querySelector("img"), null);
   assert.match(window.document.getElementById("details").textContent, /barème 2025/i);
   annonce.window.close();
   popup.window.close();
+});
+
+// --- Rues et stations citées dans l'annonce ---
+
+function simulerExtension(t) {
+  t.mock.method(globalThis, "fetch", async () => ({ ok: true, json: async () => quartiersParis }));
+  const ancienChrome = globalThis.chrome;
+  globalThis.chrome = { runtime: { getURL: (p) => `chrome-extension://test/${p}` } };
+  t.after(() => { if (ancienChrome === undefined) delete globalThis.chrome; else globalThis.chrome = ancienChrome; });
+}
+const depotAvecLieux = (requete = requeteFixe()) => new DepotLocalisation(new SourcesLieux(requete, stockageMemoire()));
+
+// Annonce d'exemple sans quartier affiché, et sans position si demandé.
+function annonceSansQuartier(surface, { sansPosition = false } = {}) {
+  const dom = exemple(surface);
+  const doc = dom.window.document;
+  doc.querySelector("h1").parentElement.nextElementSibling.querySelector("span:has(svg)").remove();
+  if (sansPosition) doc.querySelectorAll('script[type="application/ld+json"]').forEach((s) => s.remove());
+  const logement = new JinkaParseur().parser(doc);
+  dom.window.close();
+  return logement.indicesLocalisation;
+}
+
+test("Détecteur : rues et stations du référentiel retrouvées dans le texte", async () => {
+  const sources = new SourcesLieux(requeteFixe(), stockageMemoire());
+  const detecteur = new DetecteurLieux(await sources.voies(), await sources.stations());
+  const trouve = detecteur.detecter("RUE DE LOURMEL, proche M° Charles-Michels et Javel, villa Fondary.", 15);
+  assert.deepEqual(trouve.rues.map((r) => r.nom), ["rue de Lourmel", "villa Fondary"]);
+  assert.deepEqual(trouve.rues[0].quartiers, ["Grenelle", "Javel"]);
+  assert.deepEqual(trouve.stations.map((s) => s.nom).sort(), ["Charles Michels", "Javel", "Javel - André Citroën"]);
+  assert.deepEqual(trouve.stations.find((s) => s.nom === "Charles Michels").lignes, ["METRO 10"]);
+  // Hors arrondissement : la voie est ignorée.
+  assert.deepEqual(detecteur.detecter("rue de Lourmel", 7).rues, []);
+});
+
+test("Détecteur : pas de station sans mot-clé, ni sur « 35 m² »", async () => {
+  const sources = new SourcesLieux(requeteFixe(), stockageMemoire());
+  const detecteur = new DetecteurLieux(await sources.voies(), await sources.stations());
+  assert.deepEqual(detecteur.detecter("Commerce et Europe à proximité. Surface 35 m² Commerce.").stations, []);
+  assert.deepEqual(detecteur.detecter("Métro Commerce (ligne 8)").stations.map((s) => s.nom), ["Commerce"]);
+  assert.deepEqual(detecteur.detecter("Proche gare de Lyon").stations.map((s) => s.nom), ["Gare de Lyon"]);
+});
+
+test("35 m² sans quartier ni position : la rue Fondary suffit", async (t) => {
+  simulerExtension(t);
+  const resultat = await depotAvecLieux().localiser(annonceSansQuartier(35, { sansPosition: true }));
+  assert.equal(resultat.statut, "estimee");
+  assert.deepEqual(resultat.quartiers.map((q) => q.nom), ["Grenelle"]);
+  assert.ok(resultat.avertissements.includes("Quartier déduit de : rue Fondary."));
+  assert.equal(resultat.position.source, "rue Fondary (milieu de la voie)");
+  assert.equal(resultat.position.rayonMetres, 325);
+});
+
+test("37 m² sans quartier ni position : rue de Lourmel près de Charles Michels", async (t) => {
+  simulerExtension(t);
+  const resultat = await depotAvecLieux().localiser(annonceSansQuartier(37, { sansPosition: true }));
+  // La station est à la limite des deux quartiers traversés par la rue : pas de choix arbitraire.
+  assert.equal(resultat.statut, "ambigue");
+  assert.deepEqual(resultat.quartiers.map((q) => q.nom), ["Grenelle", "Javel 15Art"]);
+  assert.equal(resultat.position.source, "rue de Lourmel, côté station Charles Michels");
+  assert.equal(resultat.position.rayonMetres, 200);
+  assert.ok(GeometrieLocale.distanceEntre(resultat.position.point, [2.286, 48.8465]) < 200);
+});
+
+test("37 m² avec position : les trois indices concordent sur Javel", async (t) => {
+  simulerExtension(t);
+  const resultat = await depotAvecLieux().localiser(annonceSansQuartier(37));
+  assert.equal(resultat.statut, "estimee");
+  assert.deepEqual(resultat.quartiers.map((q) => q.id), [7511560]);
+  assert.ok(resultat.avertissements.includes("Quartier déduit de : position approximative de l'annonce, rue de Lourmel et station Charles Michels."));
+  assert.deepEqual(resultat.position, { point: [2.28787, 48.8454], rayonMetres: 150, source: "Position de l'annonce" });
+  assert.deepEqual(resultat.indices.map((i) => i.type), ["coordonnees", "rue", "station"]);
+});
+
+test("Quartier affiché : il prime, mais la position profite des rues et stations", async (t) => {
+  simulerExtension(t);
+  const indices = annonceSansQuartier(37, { sansPosition: true });
+  const resultat = await depotAvecLieux().localiser({ ...indices, quartier: "Javel" });
+  assert.equal(resultat.statut, "renseignee");
+  assert.equal(resultat.position.source, "rue de Lourmel, côté station Charles Michels");
+});
+
+test("Indices contradictoires : signalés, aucun choix arbitraire", () => {
+  const resultat = resolveur.resoudre(indices({
+    arrondissement: 15, coordonnees: [[2.315, 48.855]], rues: [{ nom: "rue de l'Ouest", quartiers: ["Ouest"] }],
+  }));
+  assert.equal(resultat.statut, "ambigue");
+  assert.deepEqual(resultat.quartiers.map((q) => q.id), [1, 2]);
+  assert.ok(resultat.avertissements.some((a) => a.startsWith("Indices contradictoires (position approximative de l'annonce et rue de l'Ouest)")));
+});
+
+test("Station : quartiers à moins de 500 m, hors arrondissement ignorés", () => {
+  const station = (position) => resolveur.resoudre(indices({ arrondissement: 15, stations: [{ nom: "S", lignes: ["METRO 1"], position }] }));
+  assert.deepEqual(station([2.302, 48.855]).quartiers.map((q) => q.id), [1]);
+  // ~370 m à l'est de la limite Ouest/Est : les deux quartiers sont possibles ; ~590 m à l'ouest : un seul.
+  assert.deepEqual(station([2.315, 48.855]).quartiers.map((q) => q.id), [1, 2]);
+  assert.equal(station([2.315, 48.855]).position.source, "Près de la station S");
+});
+
+test("Sans aucun indice précis : centre des quartiers possibles, avec un grand rayon", () => {
+  const resultat = resolveur.resoudre(indices({ arrondissement: 15 }));
+  assert.equal(resultat.position.source, "Centre des quartiers possibles");
+  assert.ok(GeometrieLocale.distanceEntre(resultat.position.point, [2.31, 48.855]) < 1);
+  assert.ok(resultat.position.rayonMetres > 800);
+  assert.equal(resolveur.resoudre(indices()).position, undefined);
+});
+
+test("Hors ligne : la localisation continue avec les indices locaux, et le signale", async (t) => {
+  simulerExtension(t);
+  const resultat = await depotAvecLieux(async () => { throw new TypeError("Failed to fetch"); }).localiser(annonceSansQuartier(37));
+  assert.equal(resultat.statut, "estimee");
+  assert.deepEqual(resultat.quartiers.map((q) => q.id), [7511560]);
+  assert.ok(resultat.avertissements.some((a) => a.includes("non vérifiées")));
+});
+
+test("Sources : cache persistant, expiration, et échec non mémorisé", async () => {
+  const stockage = stockageMemoire();
+  const appels = [];
+  let maintenant = 0;
+  await new SourcesLieux(requeteFixe(appels), stockage, () => maintenant).voies();
+  assert.equal(appels.length, 1);
+  assert.ok(appels[0].startsWith("https://opendata.paris.fr/"));
+  // Nouvelle popup, même stockage : pas de nouvel appel.
+  assert.equal((await new SourcesLieux(requeteFixe(appels), stockage, () => maintenant).voies()).length, 530);
+  assert.equal(appels.length, 1);
+  maintenant = 31 * 24 * 3600 * 1000;
+  await new SourcesLieux(requeteFixe(appels), stockage, () => maintenant).voies();
+  assert.equal(appels.length, 2);
+
+  let echec = true;
+  const sources = new SourcesLieux(async (url) => echec ? { ok: false } : requeteFixe()(url), stockageMemoire());
+  assert.equal(await sources.stations(), null);
+  echec = false;
+  assert.equal((await sources.stations()).length, 14);
+});
+
+test("Noms de quartiers du référentiel des voies : tous reconnus", () => {
+  for (const nom of ["Chapelle", "Sainte-Avoye", "Pont de Flandres", "Javel", "Saint-Lambert", "Necker"]) {
+    assert.equal(paris.parNom(nom).length, 1, nom);
+  }
 });

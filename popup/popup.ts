@@ -100,6 +100,8 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
   // Les indices bruts n'intéressent que pour comprendre la localisation : repliés par défaut.
   const technique = f.localisation.indices
     .map((i) => `${i.source} : ${i.libelle}${i.quartiers.length ? "" : " (non reconnu)"}`);
+  const position = f.localisation.position;
+  if (position) technique.push(`Position estimée : ${position.source} (à ${position.rayonMetres} m près)`);
   if (technique.length) {
     html += `<details><summary>Détails de localisation</summary><ul>${technique.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul></details>`;
   }
