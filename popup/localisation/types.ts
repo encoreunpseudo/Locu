@@ -11,40 +11,17 @@ export interface Quartier {
   geometrie: GeometrieQuartier;
 }
 
-export interface Rue {
-  id: string;
-  nom: string;
-  alias?: string[];
-  lignes: Position[][];
-}
-
-export interface Station {
-  id: string;
-  nom: string;
-  alias?: string[];
-  positions: Position[];
-}
-
-export interface DonneesLieux {
-  sources: { nom: string; url: string; licence: string; dateImport: string }[];
-  rues: Rue[];
-  stations: Station[];
-}
-
 export interface IndicesLocalisation {
   quartier?: string;
   arrondissement?: number;
-  description: string;
-  stations: string[];
   coordonnees: Position[];
 }
 
 export interface IndiceResolu {
-  type: "quartier" | "rue" | "station" | "coordonnees";
+  type: "quartier" | "coordonnees";
   libelle: string;
   source: string;
   quartiers: number[];
-  contraignant: boolean;
 }
 
 export interface ResultatLocalisation {

@@ -1,9 +1,8 @@
-import { ReferentielLieux } from "./ReferentielLieux";
 import { ReferentielQuartiers } from "./ReferentielQuartiers";
 import { ResolveurLocalisation } from "./ResolveurLocalisation";
-import type { DonneesLieux, IndicesLocalisation, Quartier, ResultatLocalisation } from "./types";
+import type { IndicesLocalisation, Quartier, ResultatLocalisation } from "./types";
 
-/** Seul accès I/O : deux ressources empaquetées dans l'extension, aucune API distante. */
+/** Seul accès I/O : les polygones des quartiers empaquetés dans l'extension, aucune API distante. */
 export class DepotLocalisation {
   private chargement?: Promise<ResolveurLocalisation>;
 
@@ -16,16 +15,8 @@ export class DepotLocalisation {
   }
 
   private async charger(): Promise<ResolveurLocalisation> {
-    const [quartiers, lieux] = await Promise.all([
-      this.lire<Quartier[]>("data/quartiers.json"),
-      this.lire<DonneesLieux>("data/localisation-lieux.json"),
-    ]);
-    return new ResolveurLocalisation(new ReferentielQuartiers(quartiers), new ReferentielLieux(lieux));
-  }
-
-  private async lire<T>(chemin: string): Promise<T> {
-    const reponse = await fetch(chrome.runtime.getURL(chemin));
-    if (!reponse.ok) throw new Error(`Référentiel local indisponible : ${chemin}`);
-    return reponse.json() as Promise<T>;
+    const reponse = await fetch(chrome.runtime.getURL("data/quartiers.json"));
+    if (!reponse.ok) throw new Error("Référentiel local indisponible : data/quartiers.json");
+    return new ResolveurLocalisation(new ReferentielQuartiers(await reponse.json() as Quartier[]));
   }
 }

@@ -39,21 +39,22 @@ npm test       # tests locaux sur les deux annonces et les cas ambigus
 Le ZIP contient directement `manifest.json`, les scripts et les données, sans dossier
 `dist/` intermédiaire. Pour l'installation en mode développeur, sélectionner `dist/`.
 
-## Localisation déterministe
+## Localisation
 
-`popup/localisation.ts` expose les classes du dossier `popup/localisation/` :
+Le quartier est déterminé dans cet ordre :
 
-- `ExtracteurLocalisationJinka` lit les blocs du DOM ; `LecteurJsonLd` valide l'annonce active.
-- `NormaliseurLieu`, `ReferentielQuartiers` et `ReferentielLieux` reconnaissent les lieux.
-- `GeometrieLocale` calcule les appartenances et intersections ; `AnalyseurProximite`
-  transforme les distances explicites en indications de proximité.
-- `ResolveurLocalisation` conserve les candidats, les indices et les contradictions.
-- `DepotLocalisation` charge et met en cache les fichiers embarqués.
+1. **Quartier affiché par Jinka** (ex. « Javel », « Grenelle »), s'il est reconnu et
+   cohérent avec l'arrondissement du titre. C'est le cas normal ; rien d'autre n'est cherché.
+2. **Position de l'annonce** (JSON-LD de l'annonce active) placée dans les polygones des
+   quartiers du barème. Le résultat est signalé comme estimé.
+3. **Tous les quartiers de l'arrondissement** ; le verdict n'est alors affirmatif que s'il
+   vaut pour chacun d'eux.
 
-Le moteur conserve plusieurs quartiers lorsque les données ne permettent pas de trancher.
-Le calcul compare le loyer au minimum et au maximum des **plafonds majorés** possibles.
-Il ne confond pas la borne basse des plafonds avec le loyer de référence minoré.
+Si le quartier affiché contredit l'arrondissement, les quartiers concernés sont conservés
+et la contradiction est signalée. Aucun appel réseau n'est effectué pendant l'analyse.
 
-**Les données rues/stations restent à importer** ; les indices non résolus sont signalés.
-Voir [les sources, l'import et les limites](data/LOCALISATION.md). Aucun appel à un LLM
-ou à une API géographique n'est effectué pendant l'analyse.
+Le calcul compare le loyer aux **plafonds majorés** possibles. Quand seule l'époque de
+construction manque, la popup indique pour quelles époques le loyer dépasse le plafond.
+
+Le barème fourni s'arrête à **2025** (baux signés du 1er juillet 2025 au 30 juin 2026) ;
+la popup signale quand il est périmé.

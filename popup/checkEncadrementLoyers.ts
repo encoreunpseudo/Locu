@@ -75,7 +75,7 @@ export async function estDansEncadrementData(logement: Logement): Promise<Fourch
   const indices = logement.indicesLocalisation ?? {
     quartier: logement.quartier,
     arrondissement: NormaliseurLieu.arrondissement(logement.arrondissement),
-    description: "", stations: [], coordonnees: [],
+    coordonnees: [],
   };
   const [lignes, localisation] = await Promise.all([chargerEncadrement(), depotLocalisation.localiser(indices)]);
   return calculerEncadrement(logement, lignes, localisation);

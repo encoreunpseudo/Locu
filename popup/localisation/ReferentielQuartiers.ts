@@ -1,6 +1,6 @@
 import { GeometrieLocale } from "./GeometrieLocale";
 import { NormaliseurLieu } from "./NormaliseurLieu";
-import type { Position, Quartier, Rue } from "./types";
+import type { Position, Quartier } from "./types";
 
 export class ReferentielQuartiers {
   private readonly noms = new Map<string, Quartier[]>();
@@ -20,13 +20,9 @@ export class ReferentielQuartiers {
     return this.quartiers.filter((q) => q.arrondissement === arrondissement);
   }
 
-  autour(point: Position, rayonMetres = 0): Quartier[] {
+  contenant(point: Position): Quartier[] {
     if (!GeometrieLocale.positionValide(point)) return [];
-    return this.quartiers.filter((q) => GeometrieLocale.distanceAuQuartier(point, q.geometrie) <= rayonMetres);
-  }
-
-  leLongDe(rue: Rue): Quartier[] {
-    return this.quartiers.filter((q) => GeometrieLocale.croiseRue(q.geometrie, rue.lignes));
+    return this.quartiers.filter((q) => GeometrieLocale.contient(q.geometrie, point));
   }
 
   private ajouterNom(nom: string, quartier: Quartier): void {

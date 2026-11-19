@@ -5,7 +5,5 @@ export { LecteurJsonLd } from "./localisation/LecteurJsonLd";
 export { NormaliseurLieu } from "./localisation/NormaliseurLieu";
 export { GeometrieLocale } from "./localisation/GeometrieLocale";
 export { ReferentielQuartiers } from "./localisation/ReferentielQuartiers";
-export { ReferentielLieux } from "./localisation/ReferentielLieux";
-export { AnalyseurProximite } from "./localisation/AnalyseurProximite";
 export { ResolveurLocalisation } from "./localisation/ResolveurLocalisation";
 export type * from "./localisation/types";

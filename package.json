@@ -3,7 +3,6 @@
   "private": true,
   "scripts": {
     "test": "node scripts/test.mjs",
-    "import:localisation": "node scripts/importer-localisation.mjs",
     "build": "tsc && node build.mjs",
     "zip": "npm run build && rm -f extension.zip && cd dist && zip -qr ../extension.zip .",
     "typecheck": "tsc --watch"

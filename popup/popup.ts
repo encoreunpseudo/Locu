@@ -60,12 +60,11 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
     lignes.push(`<li class="manquants">Barème ${echapper(f.annee)} périmé : un barème plus récent s'applique aux baux signés depuis le 1er juillet ${Number(f.annee) + 1}.</li>`);
   }
 
+  for (const avertissement of f.localisation.avertissements) lignes.push(`<li class="manquants">${echapper(avertissement)}</li>`);
+
   // Les indices bruts n'intéressent que pour comprendre la localisation : repliés par défaut.
-  const technique = [
-    ...f.localisation.indices.filter((i) => i.type !== "coordonnees")
-      .map((i) => `${i.type} : ${i.libelle}${i.quartiers.length ? "" : " (non résolu)"}`),
-    ...f.localisation.avertissements,
-  ];
+  const technique = f.localisation.indices
+    .map((i) => `${i.source} : ${i.libelle}${i.quartiers.length ? "" : " (non reconnu)"}`);
   const details = `<ul>${lignes.join("")}</ul>` + (technique.length
     ? `<details><summary>Détails de localisation</summary><ul>${technique.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul></details>`
     : "");

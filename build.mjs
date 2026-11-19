@@ -34,6 +34,5 @@ for (const { properties: p, geometry } of geojson.features) {
   });
 }
 writeFileSync("dist/data/quartiers.json", JSON.stringify([...quartiers.values()]));
-cpSync("data/localisation-lieux.json", "dist/data/localisation-lieux.json");
 
 console.log("Extension construite dans dist/");

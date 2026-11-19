@@ -4,12 +4,11 @@ import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { build } from "esbuild";
 import {
-  AnalyseurProximite, DepotLocalisation, GeometrieLocale, LecteurJsonLd,
-  NormaliseurLieu, ReferentielLieux, ReferentielQuartiers, ResolveurLocalisation,
+  DepotLocalisation, GeometrieLocale, LecteurJsonLd,
+  NormaliseurLieu, ReferentielQuartiers, ResolveurLocalisation,
 } from "../popup/localisation.ts";
 import { JinkaParseur } from "../popup/jinkaParseur.ts";
 import { calculerEncadrement } from "../popup/checkEncadrementLoyers.ts";
-import { convertirGeoJson } from "../scripts/convertir-geojson.mjs";
 
 const geojson = JSON.parse(readFileSync("data/logement-encadrement-des-loyers.geojson", "utf8"));
 const baremes = geojson.features.map((f) => f.properties);
@@ -17,10 +16,9 @@ const quartiersParis = [...new Map(geojson.features.map(({ properties: p, geomet
   id: p.code_grand_quartier, nom: p.nom_quartier,
   arrondissement: Math.floor(p.code_grand_quartier / 100) % 100, geometrie: geometry,
 }])).values()];
-const sansLieux = { sources: [], rues: [], stations: [] };
 const paris = new ReferentielQuartiers(quartiersParis);
-const resolveurParis = new ResolveurLocalisation(paris, new ReferentielLieux(sansLieux));
-const indices = (modifications = {}) => ({ description: "", stations: [], coordonnees: [], ...modifications });
+const resolveurParis = new ResolveurLocalisation(paris);
+const indices = (modifications = {}) => ({ coordonnees: [], ...modifications });
 
 function exemple(surface) {
   const nom = readdirSync("exemplesJinka").find((n) => n.endsWith(".html") && n.includes(`${surface} m²`));
@@ -29,15 +27,13 @@ function exemple(surface) {
   return new JSDOM(html, { url }); // Pas d'exécution des scripts Jinka, pas de chargement réseau.
 }
 
-test("35 m² : extraction du DOM, charges, rue et stations, sans exécuter Jinka", () => {
+test("35 m² : extraction du DOM et des charges, sans exécuter Jinka", () => {
   const dom = exemple(35);
   const logement = new JinkaParseur().parser(dom.window.document);
   assert.equal(logement.quartier, "Grenelle");
   assert.equal(logement.prixMois, 1290);
   assert.equal(logement.meuble, false);
   assert.equal(logement.nbM2, 35);
-  assert.match(logement.indicesLocalisation.description, /rue Fondary/i);
-  assert.deepEqual(logement.indicesLocalisation.stations, ["La Motte-Picquet-Grenelle", "Cambronne", "Avenue Emile-Zola", "Commerce"]);
   assert.deepEqual(logement.indicesLocalisation.coordonnees, [[2.29734, 48.8466]]);
   const localisation = resolveurParis.resoudre(logement.indicesLocalisation);
   assert.deepEqual(localisation.quartiers.map((q) => q.nom), ["Grenelle"]);
@@ -53,9 +49,10 @@ test("37 m² : ignore l'ancienne annonce et l'URL canonique périmée", () => {
   assert.equal(logement.prixMois, 1374);
   assert.equal(logement.meuble, true);
   assert.deepEqual(logement.indicesLocalisation.coordonnees, [[2.28787, 48.8454]]);
-  assert.deepEqual(logement.indicesLocalisation.stations, ["Charles Michels", "Boucicaut", "Félix Faure", "Commerce"]);
   const localisation = resolveurParis.resoudre(logement.indicesLocalisation);
   assert.deepEqual(localisation.quartiers.map((q) => q.id), [7511560]);
+  assert.equal(localisation.statut, "renseignee");
+  assert.deepEqual(localisation.avertissements, []);
   const resultat = calculerEncadrement(logement, baremes, localisation);
   assert.equal(resultat.quartier, "Javel 15Art");
   assert.equal(resultat.max, 38.3);
@@ -63,16 +60,20 @@ test("37 m² : ignore l'ancienne annonce et l'URL canonique périmée", () => {
   dom.window.close();
 });
 
-test("Sans quartier, les coordonnées Jinka classent sans exclure les autres quartiers du 15e", () => {
+test("Sans quartier affiché, la position de l'annonce donne une estimation", () => {
   const dom = exemple(37);
   dom.window.document.querySelector("h1").parentElement.nextElementSibling.querySelector("span:has(svg)").remove();
   const logement = new JinkaParseur().parser(dom.window.document);
   const resultat = resolveurParis.resoudre(logement.indicesLocalisation);
+  assert.equal(resultat.statut, "estimee");
+  assert.deepEqual(resultat.quartiers.map((q) => q.id), [7511560]);
+  dom.window.close();
+});
+
+test("Sans quartier ni position, tous les quartiers de l'arrondissement sont conservés", () => {
+  const resultat = resolveurParis.resoudre(indices({ arrondissement: 15 }));
   assert.equal(resultat.statut, "ambigue");
   assert.equal(resultat.quartiers.length, 4);
-  assert.equal(resultat.quartiers[0].id, 7511560);
-  assert.ok(resultat.avertissements.some((a) => a.includes("non résolue")));
-  dom.window.close();
 });
 
 test("JSON-LD : JSON malformé, autre annonce et URL étrangère sont ignorés", () => {
@@ -98,9 +99,9 @@ test("JSON-LD : tableaux et @graph, validation des nombres et dédoublonnage", (
 });
 
 test("Les coordonnées des exemples tombent dans les polygones attendus", () => {
-  assert.deepEqual(paris.autour([2.29734, 48.8466]).map((q) => q.nom), ["Grenelle"]);
-  assert.deepEqual(paris.autour([2.28787, 48.8454]).map((q) => q.nom), ["Javel 15Art"]);
-  assert.deepEqual(paris.autour([NaN, 48.85]), []);
+  assert.deepEqual(paris.contenant([2.29734, 48.8466]).map((q) => q.nom), ["Grenelle"]);
+  assert.deepEqual(paris.contenant([2.28787, 48.8454]).map((q) => q.nom), ["Javel 15Art"]);
+  assert.deepEqual(paris.contenant([NaN, 48.85]), []);
 });
 
 test("Normalisation des accents, tirets, abréviations et alias Javel", () => {
@@ -120,32 +121,14 @@ const quartiersTest = [
   { id: 2, nom: "Est", arrondissement: 15, geometrie: carre(2.31, 2.32) },
   { id: 3, nom: "Autre", arrondissement: 14, geometrie: carre(2.32, 2.33) },
 ];
-const rue = { id: "r1", nom: "rue Exemple", lignes: [[[2.305, 48.852], [2.305, 48.858]]] };
-const station = { id: "s1", nom: "Station Exemple", positions: [[2.305, 48.855]] };
-const lieuxTest = { sources: [], rues: [rue], stations: [station] };
 const quartiers = new ReferentielQuartiers(quartiersTest);
-const resolveur = new ResolveurLocalisation(quartiers, new ReferentielLieux(lieuxTest));
+const resolveur = new ResolveurLocalisation(quartiers);
 
-test("Rue reconnue sans numéro : restriction locale et provenance conservée", () => {
-  const resultat = resolveur.resoudre(indices({ arrondissement: 15, description: "RUE EXEMPLE, au premier étage." }));
-  assert.equal(resultat.statut, "estimee");
-  assert.deepEqual(resultat.quartiers.map((q) => q.id), [1]);
-  assert.equal(resultat.indices[0].source, "Description de l'annonce");
-});
-
-test("Rue seulement proche : ne pas confondre proximité et adresse", () => {
-  const resultat = resolveur.resoudre(indices({ arrondissement: 15, description: "À proximité de la rue Exemple, appartement calme." }));
+test("Point sur une frontière : conserver les deux quartiers", () => {
+  assert.deepEqual(quartiers.contenant([2.31, 48.855]).map((q) => q.id), [1, 2]);
+  const resultat = resolveur.resoudre(indices({ arrondissement: 15, coordonnees: [[2.31, 48.855]] }));
+  assert.equal(resultat.statut, "ambigue");
   assert.equal(resultat.quartiers.length, 2);
-  assert.equal(resultat.indices[0].contraignant, false);
-});
-
-test("Rue sur une frontière : conserver les deux côtés", () => {
-  assert.deepEqual(quartiers.leLongDe({ ...rue, lignes: [[[2.31, 48.852], [2.31, 48.858]]] }).map((q) => q.id), [1, 2]);
-  assert.deepEqual(quartiers.autour([2.31, 48.855]).map((q) => q.id), [1, 2]);
-});
-
-test("Rue traversante : détecter une intersection même sans sommet à l'intérieur", () => {
-  assert.equal(GeometrieLocale.croiseRue(carre(2.3, 2.31), [[[2.29, 48.855], [2.32, 48.855]]]), true);
 });
 
 test("Polygones à trous et MultiPolygon", () => {
@@ -156,48 +139,28 @@ test("Polygones à trous et MultiPolygon", () => {
   assert.equal(GeometrieLocale.contient({ type: "MultiPolygon", coordinates: [trou.coordinates, carre(2.32, 2.33).coordinates] }, [2.325, 48.855]), true);
 });
 
-test("Quartier Jinka reconnu : il prime sur la rue, sans chercher plus loin", () => {
-  const resultat = resolveur.resoudre(indices({ arrondissement: 15, quartier: "Est", description: "Rue Exemple, appartement." }));
+test("Quartier affiché reconnu : il prime sur la position", () => {
+  const resultat = resolveur.resoudre(indices({ arrondissement: 15, quartier: "Est", coordonnees: [[2.305, 48.855]] }));
   assert.equal(resultat.statut, "renseignee");
   assert.deepEqual(resultat.quartiers.map((q) => q.id), [2]);
-  assert.deepEqual(resultat.avertissements, []);
 });
 
 test("Quartier incompatible avec l'arrondissement : pas de priorité silencieuse", () => {
   const resultat = resolveur.resoudre(indices({ arrondissement: 15, quartier: "Autre" }));
   assert.equal(resultat.statut, "ambigue");
   assert.equal(resultat.quartiers.length, 3);
+  assert.ok(resultat.avertissements.some((a) => a.includes("ne correspond pas")));
+});
+
+test("Position hors de l'arrondissement : ignorée", () => {
+  const resultat = resolveur.resoudre(indices({ arrondissement: 15, coordonnees: [[2.325, 48.855]] }));
+  assert.equal(resultat.statut, "ambigue");
+  assert.equal(resultat.quartiers.length, 2);
 });
 
 test("Sans lieu identifiable, aucun quartier inventé", () => {
-  assert.equal(resolveur.resoudre(indices({ description: "Appartement agréable" })).statut, "introuvable");
+  assert.equal(resolveur.resoudre(indices()).statut, "introuvable");
   assert.equal(resolveur.resoudre(indices({ quartier: "Inexistant" })).quartiers.length, 0);
-});
-
-test("Stations et durées de marche : classement indicatif, aucun quartier éliminé", () => {
-  const resultat = resolveur.resoudre(indices({ arrondissement: 15, description: "À 5 min à pied du métro Station Exemple." }));
-  assert.equal(resultat.quartiers.length, 2);
-  assert.equal(resultat.indices[0].contraignant, false);
-  assert.match(resultat.indices[0].source, /550 m/);
-  assert.equal(new AnalyseurProximite().rayonIndicatif("À 5 min en voiture de Station Exemple", "Station Exemple"), 800);
-});
-
-test("Noms de station ambigus : pas de détection hors contexte transport", () => {
-  const lieux = new ReferentielLieux({ ...sansLieux, stations: [{ ...station, nom: "Commerce" }] });
-  assert.deepEqual(lieux.stationsDans("Cuisine près d'un commerce"), []);
-  assert.deepEqual(lieux.stationsDans("À proximité du métro Commerce"), ["Commerce"]);
-});
-
-test("Le dictionnaire privilégie le nom de rue complet", () => {
-  const lieux = new ReferentielLieux({ ...sansLieux, rues: [rue, { ...rue, id: "r2", nom: "rue Exemple prolongée" }] });
-  assert.deepEqual(lieux.ruesDans("Rue Exemple prolongée, appartement.").filter((r) => r.rue).map((r) => r.rue.id), ["r2"]);
-  assert.equal(lieux.ruesDans("Rue Exemple et rue Exemple prolongée.").filter((r) => r.rue).length, 2);
-});
-
-test("Coordonnées contradictoires : signaler l'incertitude sans les traiter comme une adresse", () => {
-  const resultat = resolveur.resoudre(indices({ arrondissement: 15, description: "Rue Exemple, appartement.", coordonnees: [[2.325, 48.855]] }));
-  assert.equal(resultat.statut, "ambigue");
-  assert.ok(resultat.avertissements.some((a) => a.includes("ne concordent pas")));
 });
 
 const localisationTest = resolveur.resoudre(indices({ arrondissement: 15 }));
@@ -228,23 +191,13 @@ test("Charges absentes : ne pas traiter automatiquement le prix CC comme hors ch
   dom.window.close();
 });
 
-test("Import local : agrégation des lignes, noms officiels et rejet des projections incorrectes", () => {
-  const feature = { type: "Feature", properties: { n_sq_vo: 1, l_longmin: "rue Exemple" }, geometry: { type: "LineString", coordinates: rue.lignes[0] } };
-  const collection = { type: "FeatureCollection", features: [feature, feature] };
-  assert.equal(convertirGeoJson(collection, "rues")[0].lignes.length, 1);
-  const invalide = structuredClone(collection);
-  invalide.features[0].geometry.coordinates = [[600000, 120000], [600100, 120100]];
-  assert.throws(() => convertirGeoJson(invalide, "rues"), /WGS84/);
-  assert.throws(() => convertirGeoJson({ type: "FeatureCollection", features: [] }, "rues"), /non vide/);
-});
-
 test("Dépôt : uniquement des ressources locales, chargement unique et réessai après erreur", async (t) => {
   const appels = [];
   let echec = true;
   t.mock.method(globalThis, "fetch", async (url) => {
     assert.ok(url.startsWith("chrome-extension://test/data/"));
     appels.push(url);
-    return { ok: !echec, json: async () => url.endsWith("quartiers.json") ? quartiersTest : lieuxTest };
+    return { ok: !echec, json: async () => quartiersTest };
   });
   const ancienChrome = globalThis.chrome;
   globalThis.chrome = { runtime: { getURL: (p) => `chrome-extension://test/${p}` } };
@@ -254,7 +207,7 @@ test("Dépôt : uniquement des ressources locales, chargement unique et réessai
   echec = false;
   assert.equal((await depot.localiser(indices({ arrondissement: 15 }))).quartiers.length, 2);
   await depot.localiser(indices({ arrondissement: 15 }));
-  assert.equal(appels.length, 4);
+  assert.equal(appels.length, 2);
 });
 
 test("Popup complet : annonce Jinka → fichiers locaux → verdict et texte échappé", async () => {
@@ -269,12 +222,14 @@ test("Popup complet : annonce Jinka → fichiers locaux → verdict et texte éc
   };
   window.fetch = async (url) => {
     assert.ok(url.startsWith("chrome-extension://test/data/"));
-    return { ok: true, json: async () => url.endsWith("encadrement.json") ? baremes : url.endsWith("quartiers.json") ? quartiersParis : sansLieux };
+    return { ok: true, json: async () => url.endsWith("encadrement.json") ? baremes : quartiersParis };
   };
   const compilation = await build({ entryPoints: ["popup/popup.ts"], bundle: true, write: false, format: "iife" });
   window.eval(compilation.outputFiles[0].text);
   await new Promise((resolve) => setImmediate(resolve));
-  assert.match(window.document.getElementById("resultat").textContent, /indéterminé/);
+  // Quartier non reconnu : la position de l'annonce retrouve Javel, seule l'époque reste inconnue.
+  assert.match(window.document.getElementById("resultat").textContent, /sauf si l'immeuble a été construit après 1990/);
+  assert.match(window.document.getElementById("details").textContent, /position approximative/);
   assert.match(window.document.getElementById("details").textContent, /<img src=x/);
   assert.equal(window.document.querySelector("img"), null);
   assert.match(window.document.getElementById("details").textContent, /barème 2025/);

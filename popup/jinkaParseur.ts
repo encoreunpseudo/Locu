@@ -24,7 +24,7 @@ export class JinkaParseur extends ParseurAnnonce {
     const caracteristiques = this.blocApresTitre(doc, "Caractéristiques");
     const infos = `${description}\n${caracteristiques}`;
     const secours = `${doc.title}\n${doc.body.innerText ?? doc.body.textContent}`;
-    const indicesLocalisation = this.localisation.extraire(doc, description);
+    const indicesLocalisation = this.localisation.extraire(doc);
 
     // Le prix affiché par Jinka est charges comprises, l'encadrement porte sur le loyer hors charges
     const prix = this.extrairePrix(this.texteSeul(doc, /^\d[\d\s  ]*€$/) ?? doc.title);
