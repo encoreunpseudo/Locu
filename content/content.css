@@ -1,0 +1,5 @@
+/* Préfixer les classes pour ne pas entrer en conflit avec le CSS des sites */
+.mon-extension-highlight {
+  outline: 4px solid #f59e0b !important;
+  outline-offset: -4px;
+}

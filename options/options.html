@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Options – Mon Extension</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
+    label { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    #status { color: #16a34a; min-height: 1em; }
+  </style>
+</head>
+<body>
+  <h1>Options</h1>
+
+  <label>
+    <input type="checkbox" id="enabled">
+    Activer l'extension
+  </label>
+
+  <button id="reset">Réinitialiser le compteur</button>
+  <p id="status"></p>
+
+  <script src="options.js"></script>
+</body>
+</html>
