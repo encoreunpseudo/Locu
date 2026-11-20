@@ -1,7 +1,11 @@
 import { estDansEncadrementData, type FourchetteEncadrement, type Logement } from "./checkEncadrementLoyers";
+import type { PositionEstimee } from "./localisation";
+import { lireLieux, tempsTrajets, type TempsTrajet } from "./tempsMetro";
+import type { Etape } from "./trajets/types";
 
 const resultatEl = document.getElementById("resultat")!;
 const detailsEl = document.getElementById("details")!;
+const trajetsEl = document.getElementById("trajets");
 
 const NOMS_CHAMPS: Record<string, string> = {
   quartier: "quartier",
@@ -156,6 +160,111 @@ async function verifierOngletActif() {
     return;
   }
   afficherFourchette(logement, fourchette);
+  // Les trajets arrivent ensuite, sans retarder le verdict.
+  // Un échec des trajets ne doit jamais remplacer le verdict déjà affiché.
+  await afficherTrajets(fourchette.localisation.position).catch(() => { if (trajetsEl) trajetsEl.innerHTML = ""; });
+}
+
+// Temps en transports en commun vers les lieux enregistrés dans les options.
+async function afficherTrajets(position?: PositionEstimee) {
+  if (!trajetsEl) return;
+  const entete = (lien: string) => `<div class="entete-trajets"><span class="etiquette">Trajets</span>` +
+    `<button class="lien" data-options>${echapper(lien)}</button></div>`;
+  const lieux = await lireLieux();
+  if (!lieux.length) {
+    trajetsEl.innerHTML = `<div class="section trajets">${entete("Ajouter mes lieux")}` +
+      `<div class="contexte">Enregistre ton travail ou ta fac pour voir le temps de trajet depuis chaque annonce.</div></div>`;
+  } else if (!position) {
+    trajetsEl.innerHTML = `<div class="section trajets">${entete("Mes lieux")}<div class="contexte">Position du logement inconnue.</div></div>`;
+  } else {
+    trajetsEl.innerHTML = `<div class="section trajets">${entete("Mes lieux")}<div class="contexte">Calcul des trajets…</div></div>`;
+    const [temps, pictos] = await Promise.all([tempsTrajets(position, lieux), pictogrammesDisponibles()]);
+    const contexte = `En semaine, départ 8 h 30 · depuis ${position.source} (à ${position.rayonMetres} m près)`;
+    trajetsEl.innerHTML = `<div class="section trajets">${entete("Mes lieux")}${temps.map((t, i) => ligneTrajet(t, pictos, i === 0)).join("")}` +
+      `<div class="contexte">${echapper(contexte)}</div></div>`;
+  }
+  trajetsEl.querySelector("[data-options]")?.addEventListener("click", () => chrome.runtime.openOptionsPage());
+}
+
+function ligneTrajet(t: TempsTrajet, pictos: Set<string>, ouvert: boolean): string {
+  if (t.minMinutes == null || t.maxMinutes == null || !t.itineraire) {
+    return `<div class="rangee trajet"><span>${echapper(t.lieu.nom)}</span><span class="detail-trajet erreur">${echapper(t.erreur ?? "Indisponible")}</span></div>`;
+  }
+  const duree = t.minMinutes === t.maxMinutes ? `${t.minMinutes} min` : `${t.minMinutes}–${t.maxMinutes} min`;
+  const { lignes, correspondances, etapes } = t.itineraire;
+  const detail = !lignes.length ? "À pied"
+    : correspondances === 0 ? "Direct" : `${correspondances} correspondance${correspondances > 1 ? "s" : ""}`;
+  const resume = `<span><span class="nom-lieu">${echapper(t.lieu.nom)}</span><span class="detail-trajet">${echapper(detail)}</span></span>` +
+    `<span class="duree">${echapper(duree)}</span>`;
+  if (!etapes?.length) return `<div class="rangee trajet">${resume}</div>`;
+  // Résumé horizontal toujours visible ; un clic déplie l'itinéraire station par station.
+  return `<details class="trajet"${ouvert ? " open" : ""}><summary class="resume-trajet">${resume}` +
+    `<div class="etapes">${etapesHtml(etapes, pictos)}<span class="chevron" aria-hidden="true"></span></div></summary>` +
+    `${itineraireHtml(etapes, t.lieu.nom, pictos)}</details>`;
+}
+
+function iconeLigne(e: Extract<Etape, { type: "transport" }>, pictos: Set<string>): string {
+  const nom = `${e.mode} ${e.code}`.trim();
+  return e.ligneId && pictos.has(e.ligneId)
+    ? `<img class="picto" src="../data/pictos/${e.ligneId}.svg" alt="${echapper(nom)}">`
+    : `<span class="badge-ligne" style="${e.couleur ? `background:#${e.couleur};` : ""}${e.couleurTexte ? `color:#${e.couleurTexte};` : ""}" aria-label="${echapper(nom)}">${echapper(e.code || e.mode)}</span>`;
+}
+
+const ICONE_MARCHE = `<span class="icone-marche" role="img" aria-label="À pied"></span>`;
+
+// « 🚶 3 › Ⓜ10 12 › 🚶 11 », comme Citymapper : une icône par étape suivie de sa durée en minutes.
+function etapesHtml(etapes: Etape[], pictos: Set<string>): string {
+  return etapes.map((e) => {
+    if (e.type === "marche") return `<span class="etape" title="${e.minutes} min à pied">${ICONE_MARCHE}${e.minutes}</span>`;
+    const titre = `${e.mode} ${e.code}${e.direction ? ` direction ${e.direction}` : ""}, ${e.minutes} min`;
+    return `<span class="etape" title="${echapper(titre)}">${iconeLigne(e, pictos)}${e.minutes}</span>`;
+  }).join(`<span class="fleche" aria-hidden="true">›</span>`);
+}
+
+/**
+ * Frise verticale : un point par lieu (départ, stations, arrivée) avec son heure,
+ * et entre deux points le tronçon parcouru (pointillés à pied, trait à la couleur de la ligne).
+ */
+function itineraireHtml(etapes: Etape[], destination: string, pictos: Set<string>): string {
+  const arret = (heure: string | undefined, nom: string, extremite = false) =>
+    `<li class="arret${extremite ? " extremite" : ""}"><span class="heure">${echapper(heure ?? "")}</span>` +
+    `<span class="rail"><span class="point"></span></span><span class="nom-arret">${echapper(nom)}</span></li>`;
+  const troncon = (e: Etape) => {
+    if (e.type === "marche") {
+      return `<li class="troncon marche"><span class="heure"></span><span class="rail"></span><span class="texte">` +
+        `${ICONE_MARCHE}${e.correspondance ? "Correspondance à pied" : "À pied"} · ${e.minutes} min</span></li>`;
+    }
+    const sousTitre = [
+      e.arrets != null ? `${e.arrets} arrêt${e.arrets > 1 ? "s" : ""}` : "",
+      `${e.minutes - e.attente} min`,
+      e.attente ? `attente ${e.attente} min` : "",
+    ].filter(Boolean).join(" · ");
+    return `<li class="troncon transport"${e.couleur ? ` style="--ligne:#${e.couleur}"` : ""}><span class="heure"></span><span class="rail"></span>` +
+      `<span class="texte"><span class="ligne-titre">${iconeLigne(e, pictos)}<span>${echapper(e.direction ? `Direction ${e.direction}` : `${e.mode} ${e.code}`)}</span></span>` +
+      `<span class="sous">${echapper(sousTitre)}</span></span></li>`;
+  };
+
+  const rangs = [arret(etapes[0].heureDebut, "Départ", true)];
+  etapes.forEach((e, i) => {
+    rangs.push(troncon(e));
+    const suivante = etapes[i + 1];
+    if (!suivante) return;
+    // Station entre deux tronçons : celle où l'on monte, sinon celle où l'on descend.
+    const nom = suivante.type === "transport" ? suivante.depart : e.type === "transport" ? e.arrivee : undefined;
+    rangs.push(arret(suivante.type === "transport" ? suivante.heureDebut : e.heureFin, nom ?? ""));
+  });
+  rangs.push(arret(etapes[etapes.length - 1].heureFin, destination, true));
+  return `<ol class="itineraire">${rangs.join("")}</ol>`;
+}
+
+// Pictogrammes IDFM empaquetés (data/pictos/index.json) ; sans eux, des badges colorés les remplacent.
+let pictosCache: Promise<Set<string>> | undefined;
+function pictogrammesDisponibles(): Promise<Set<string>> {
+  pictosCache ??= fetch(chrome.runtime.getURL("data/pictos/index.json"))
+    .then((r) => r.ok ? r.json() : {})
+    .then((index) => new Set(Object.keys(index ?? {})))
+    .catch(() => new Set());
+  return pictosCache;
 }
 
 verifierOngletActif().catch(() => afficher("inconnu", "Impossible de lire les données locales. Recharge l'extension puis réessaie."));

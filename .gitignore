@@ -4,3 +4,4 @@ extension.zip
 .DS_Store
 .tests-*/
 exemplesJinka/*_files/
+.env

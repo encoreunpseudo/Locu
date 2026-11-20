@@ -183,3 +183,121 @@ details {
 
 details ul { margin: 6px 0 0; padding-left: 18px; }
 summary { cursor: pointer; }
+
+/* Trajets vers les lieux de l'utilisateur */
+.trajets { padding-top: 12px; border-top: 1px solid var(--bordure); }
+.entete-trajets { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.rangee.trajet { grid-template-columns: 1fr auto; row-gap: 6px; }
+.nom-lieu { display: block; font-weight: 600; }
+.detail-trajet { display: block; font-size: 12px; color: var(--discret); }
+.detail-trajet.erreur { color: var(--ambre); text-align: right; }
+.duree { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.contexte { margin-top: 6px; font-size: 11.5px; color: var(--discret); }
+
+button.lien {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--discret);
+  text-decoration: underline;
+  cursor: pointer;
+}
+button.lien:hover { color: var(--texte); }
+
+/* Étapes du trajet, façon Citymapper */
+.etapes {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.etape { display: inline-flex; align-items: center; gap: 3px; }
+.fleche { color: var(--discret); font-weight: 400; }
+.picto { width: 20px; height: 20px; display: block; }
+.icone-marche {
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: url("../data/pictos/marche.svg") center / contain no-repeat;
+  mask: url("../data/pictos/marche.svg") center / contain no-repeat;
+}
+.badge-ligne {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--discret);
+}
+
+/* Lieu dépliable : résumé, puis itinéraire station par station */
+details.trajet {
+  margin: 0;
+  font-size: 13px;
+  color: var(--texte);
+  border-bottom: 1px solid var(--bordure);
+}
+details.trajet:last-of-type { border-bottom: none; }
+summary.resume-trajet {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 6px;
+  padding: 7px 0;
+  list-style: none;
+  cursor: pointer;
+}
+summary.resume-trajet::-webkit-details-marker { display: none; }
+.chevron {
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--discret);
+  border-bottom: 1.5px solid var(--discret);
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+details[open] .chevron { transform: rotate(45deg); }
+
+.itineraire { list-style: none; margin: 2px 0 12px; padding: 0; }
+.itineraire li {
+  display: grid;
+  grid-template-columns: 34px 14px 1fr;
+  column-gap: 8px;
+  align-items: center;
+}
+.itineraire .heure {
+  font-size: 11.5px;
+  color: var(--discret);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.itineraire .rail { align-self: stretch; display: flex; justify-content: center; }
+.arret .point {
+  width: 10px;
+  height: 10px;
+  margin: auto 0;
+  border: 2px solid var(--texte);
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: var(--fond);
+}
+.arret.extremite .point { background: var(--texte); }
+.nom-arret { font-size: 12.5px; font-weight: 600; }
+.arret.extremite .nom-arret { font-weight: 700; }
+.troncon .rail::before { content: ""; border-left: 3px dotted var(--discret); }
+.troncon.transport .rail::before { border-left: 4px solid var(--ligne, var(--discret)); border-radius: 2px; }
+.troncon .texte { padding: 7px 0; font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
+.troncon.marche .texte { flex-direction: row; align-items: center; gap: 5px; color: var(--discret); }
+.ligne-titre { display: flex; align-items: center; gap: 6px; font-weight: 500; }
+.sous { color: var(--discret); font-size: 11.5px; }

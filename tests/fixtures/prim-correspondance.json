@@ -1,0 +1,218 @@
+{
+ "journeys": [
+  {
+   "duration": 1766,
+   "nb_transfers": 1,
+   "departure_date_time": "20261123T083222",
+   "arrival_date_time": "20261123T090148",
+   "durations": {
+    "total": 1766,
+    "walking": 742,
+    "bike": 0,
+    "car": 0,
+    "taxi": 0,
+    "ridesharing": 0
+   },
+   "sections": [
+    {
+     "type": "street_network",
+     "mode": "walking",
+     "duration": 472,
+     "departure_date_time": "20261123T083222",
+     "arrival_date_time": "20261123T084014",
+     "links": [],
+     "from": {
+      "name": "75 bis Rue de Lourmel (Paris)",
+      "embedded_type": "address"
+     },
+     "to": {
+      "name": "Félix Faure (Paris)",
+      "embedded_type": "stop_point"
+     }
+    },
+    {
+     "type": "public_transport",
+     "duration": 491,
+     "departure_date_time": "20261123T084014",
+     "arrival_date_time": "20261123T084825",
+     "display_informations": {
+      "commercial_mode": "Métro",
+      "code": "8",
+      "network": "RATP",
+      "direction": "Pointe du Lac (Créteil)",
+      "physical_mode": "Métro",
+      "label": "8",
+      "color": "D282BE",
+      "text_color": "000000"
+     },
+     "links": [
+      {
+       "id": "line:IDFM:C01378",
+       "type": "line"
+      }
+     ],
+     "stop_date_times": [
+      {
+       "stop_point": {
+        "name": "Félix Faure"
+       },
+       "departure_date_time": "20261123T084014"
+      },
+      {
+       "stop_point": {
+        "name": "Commerce"
+       },
+       "departure_date_time": "20261123T084126"
+      },
+      {
+       "stop_point": {
+        "name": "La Motte-Picquet - Grenelle"
+       },
+       "departure_date_time": "20261123T084249"
+      },
+      {
+       "stop_point": {
+        "name": "École Militaire"
+       },
+       "departure_date_time": "20261123T084427"
+      },
+      {
+       "stop_point": {
+        "name": "La Tour-Maubourg"
+       },
+       "departure_date_time": "20261123T084532"
+      },
+      {
+       "stop_point": {
+        "name": "Invalides"
+       },
+       "departure_date_time": "20261123T084657"
+      },
+      {
+       "stop_point": {
+        "name": "Concorde"
+       },
+       "departure_date_time": "20261123T084845"
+      }
+     ],
+     "from": {
+      "name": "Félix Faure (Paris)",
+      "embedded_type": "stop_point"
+     },
+     "to": {
+      "name": "Concorde (Paris)",
+      "embedded_type": "stop_point"
+     }
+    },
+    {
+     "type": "transfer",
+     "mode": "walking",
+     "transfer_type": "walking",
+     "duration": 180,
+     "departure_date_time": "20261123T084825",
+     "arrival_date_time": "20261123T085125",
+     "links": [],
+     "from": {
+      "name": "Concorde (Paris)",
+      "embedded_type": "stop_point"
+     },
+     "to": {
+      "name": "Concorde (Paris)",
+      "embedded_type": "stop_point"
+     }
+    },
+    {
+     "type": "waiting",
+     "duration": 215,
+     "departure_date_time": "20261123T085125",
+     "arrival_date_time": "20261123T085500",
+     "links": []
+    },
+    {
+     "type": "public_transport",
+     "duration": 318,
+     "departure_date_time": "20261123T085500",
+     "arrival_date_time": "20261123T090018",
+     "display_informations": {
+      "commercial_mode": "Métro",
+      "code": "1",
+      "network": "RATP",
+      "direction": "Château de Vincennes (Vincennes)",
+      "physical_mode": "Métro",
+      "label": "1",
+      "color": "FFBE00",
+      "text_color": "000000"
+     },
+     "links": [
+      {
+       "id": "line:IDFM:C01371",
+       "type": "line"
+      }
+     ],
+     "stop_date_times": [
+      {
+       "stop_point": {
+        "name": "Concorde"
+       },
+       "departure_date_time": "20261123T085500"
+      },
+      {
+       "stop_point": {
+        "name": "Tuileries"
+       },
+       "departure_date_time": "20261123T085601"
+      },
+      {
+       "stop_point": {
+        "name": "Palais Royal - Musée du Louvre"
+       },
+       "departure_date_time": "20261123T085713"
+      },
+      {
+       "stop_point": {
+        "name": "Louvre - Rivoli"
+       },
+       "departure_date_time": "20261123T085815"
+      },
+      {
+       "stop_point": {
+        "name": "Châtelet"
+       },
+       "departure_date_time": "20261123T085926"
+      },
+      {
+       "stop_point": {
+        "name": "Hôtel de Ville"
+       },
+       "departure_date_time": "20261123T090038"
+      }
+     ],
+     "from": {
+      "name": "Concorde (Paris)",
+      "embedded_type": "stop_point"
+     },
+     "to": {
+      "name": "Hôtel de Ville (Paris)",
+      "embedded_type": "stop_point"
+     }
+    },
+    {
+     "type": "street_network",
+     "mode": "walking",
+     "duration": 90,
+     "departure_date_time": "20261123T090018",
+     "arrival_date_time": "20261123T090148",
+     "links": [],
+     "from": {
+      "name": "Hôtel de Ville (Paris)",
+      "embedded_type": "stop_point"
+     },
+     "to": {
+      "name": "8 Place de l'Hôtel-de-Ville - Esplanade de la Libération (Paris)",
+      "embedded_type": "address"
+     }
+    }
+   ]
+  }
+ ]
+}

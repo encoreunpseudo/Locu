@@ -2,23 +2,52 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Options – Mon Extension</title>
+  <title>Mes lieux – Encadrement des loyers</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
-    label { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-    #status { color: #16a34a; min-height: 1em; }
+    :root { --fond: #fff; --surface: #f6f7f9; --bordure: #e5e7eb; --texte: #111827; --discret: #6b7280; --accent: #1d4ed8; --rouge: #b91c1c; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fond: #18191c; --surface: #222327; --bordure: #33353a; --texte: #f3f4f6; --discret: #9ca3af; --accent: #93c5fd; --rouge: #fca5a5; }
+    }
+    body { font: 14px/1.5 system-ui, -apple-system, sans-serif; color: var(--texte); background: var(--fond); max-width: 520px; margin: 40px auto; padding: 0 16px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    p.aide { color: var(--discret); margin: 0 0 20px; }
+    ul#lieux { list-style: none; padding: 0; margin: 0 0 24px; }
+    #lieux li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--bordure); border-radius: 8px; margin-bottom: 8px; background: var(--surface); }
+    #lieux .nom { font-weight: 600; }
+    #lieux .adresse { color: var(--discret); font-size: 13px; }
+    #lieux .vide { color: var(--discret); background: none; border-style: dashed; }
+    form { display: grid; gap: 10px; }
+    label { display: grid; gap: 4px; font-weight: 500; }
+    input { font: inherit; padding: 8px 10px; border: 1px solid var(--bordure); border-radius: 6px; background: var(--fond); color: var(--texte); }
+    .champ-adresse { position: relative; }
+    #suggestions { list-style: none; margin: 4px 0 0; padding: 0; border: 1px solid var(--bordure); border-radius: 6px; background: var(--fond); }
+    #suggestions:empty { display: none; }
+    #suggestions li { padding: 8px 10px; cursor: pointer; }
+    #suggestions li[aria-selected="true"], #suggestions li:hover { background: var(--surface); }
+    button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--bordure); background: var(--surface); color: var(--texte); cursor: pointer; }
+    button[type="submit"] { background: var(--accent); border-color: var(--accent); color: var(--fond); font-weight: 600; justify-self: start; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    button.supprimer { padding: 4px 10px; font-size: 13px; }
+    #statut { min-height: 1.5em; color: var(--discret); }
+    #statut.erreur { color: var(--rouge); }
   </style>
 </head>
 <body>
-  <h1>Options</h1>
+  <h1>Mes lieux</h1>
+  <p class="aide">Travail, université… La popup affichera le temps en transports en commun depuis chaque annonce, un jour de semaine à 8&nbsp;h&nbsp;30.</p>
 
-  <label>
-    <input type="checkbox" id="enabled">
-    Activer l'extension
-  </label>
+  <ul id="lieux"></ul>
 
-  <button id="reset">Réinitialiser le compteur</button>
-  <p id="status"></p>
+  <form id="ajout">
+    <label>Nom <input id="nom" placeholder="Travail" maxlength="30" required></label>
+    <div class="champ-adresse">
+      <label>Adresse <input id="adresse" placeholder="12 rue de Lourmel, Paris" autocomplete="off" required
+        role="combobox" aria-autocomplete="list" aria-controls="suggestions" aria-expanded="false"></label>
+      <ul id="suggestions" role="listbox"></ul>
+    </div>
+    <button type="submit" id="ajouter" disabled>Ajouter</button>
+    <p id="statut" role="status"></p>
+  </form>
 
   <script src="options.js"></script>
 </body>

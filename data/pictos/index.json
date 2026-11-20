@@ -1,0 +1,158 @@
+{
+ "C01679": {
+  "mode": "TRAMWAY",
+  "ligne": "3b"
+ },
+ "C01742": {
+  "mode": "RER",
+  "ligne": "A"
+ },
+ "C01740": {
+  "mode": "TRAIN",
+  "ligne": "L"
+ },
+ "C01384": {
+  "mode": "METRO",
+  "ligne": "14"
+ },
+ "C01381": {
+  "mode": "METRO",
+  "ligne": "11"
+ },
+ "C01378": {
+  "mode": "METRO",
+  "ligne": "8"
+ },
+ "C01376": {
+  "mode": "METRO",
+  "ligne": "6"
+ },
+ "C01383": {
+  "mode": "METRO",
+  "ligne": "13"
+ },
+ "C01382": {
+  "mode": "METRO",
+  "ligne": "12"
+ },
+ "C01379": {
+  "mode": "METRO",
+  "ligne": "9"
+ },
+ "C01371": {
+  "mode": "METRO",
+  "ligne": "1"
+ },
+ "C01387": {
+  "mode": "METRO",
+  "ligne": "7bis"
+ },
+ "C01377": {
+  "mode": "METRO",
+  "ligne": "7"
+ },
+ "C01739": {
+  "mode": "TRAIN",
+  "ligne": "J"
+ },
+ "C01728": {
+  "mode": "RER",
+  "ligne": "D"
+ },
+ "C01737": {
+  "mode": "TRAIN",
+  "ligne": "H"
+ },
+ "C01727": {
+  "mode": "RER",
+  "ligne": "C"
+ },
+ "C01743": {
+  "mode": "RER",
+  "ligne": "B"
+ },
+ "C01730": {
+  "mode": "TRAIN",
+  "ligne": "P"
+ },
+ "C01373": {
+  "mode": "METRO",
+  "ligne": "3"
+ },
+ "C01375": {
+  "mode": "METRO",
+  "ligne": "5"
+ },
+ "C01738": {
+  "mode": "TRAIN",
+  "ligne": "K"
+ },
+ "C01731": {
+  "mode": "TRAIN",
+  "ligne": "R"
+ },
+ "C01736": {
+  "mode": "TRAIN",
+  "ligne": "N"
+ },
+ "C01729": {
+  "mode": "RER",
+  "ligne": "E"
+ },
+ "C01741": {
+  "mode": "TRAIN",
+  "ligne": "U"
+ },
+ "C01391": {
+  "mode": "TRAMWAY",
+  "ligne": "3a"
+ },
+ "C01389": {
+  "mode": "TRAMWAY",
+  "ligne": "1"
+ },
+ "C01390": {
+  "mode": "TRAMWAY",
+  "ligne": "2"
+ },
+ "C01380": {
+  "mode": "METRO",
+  "ligne": "10"
+ },
+ "C01374": {
+  "mode": "METRO",
+  "ligne": "4"
+ },
+ "C01372": {
+  "mode": "METRO",
+  "ligne": "2"
+ },
+ "C01795": {
+  "mode": "TRAMWAY",
+  "ligne": "8"
+ },
+ "C01774": {
+  "mode": "TRAMWAY",
+  "ligne": "7"
+ },
+ "C01843": {
+  "mode": "TRAMWAY",
+  "ligne": "4"
+ },
+ "C01684": {
+  "mode": "TRAMWAY",
+  "ligne": "5"
+ },
+ "C01794": {
+  "mode": "TRAMWAY",
+  "ligne": "6"
+ },
+ "C01999": {
+  "mode": "TRAMWAY",
+  "ligne": "11"
+ },
+ "C01386": {
+  "mode": "METRO",
+  "ligne": "3bis"
+ }
+}

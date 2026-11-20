@@ -68,6 +68,40 @@ d'IDFM (`data.iledefrance-mobilites.fr`, jeu *emplacement-des-gares-idf*). Seuls
 voies publiques sont envoyés, rien sur l'utilisateur ni sur l'annonce. Hors ligne, la
 localisation continue avec les indices locaux et le signale.
 
+## Temps de trajet
+
+La popup affiche le temps en transports en commun entre le logement et les lieux de
+l'utilisateur (travail, université…), par exemple « Fac · 25–29 min · Métro 10 · direct ».
+
+1. **Clé PRIM** : créer un compte sur [prim.iledefrance-mobilites.fr](https://prim.iledefrance-mobilites.fr),
+   puis mettre la clé dans `.env` à la racine (fichier ignoré par git) :
+   `PRIM_API_KEY=...`, puis `npm run build`. ⚠️ La clé est intégrée en clair dans `dist/` et
+   `extension.zip` : ne pas distribuer ce ZIP au-delà d'un usage personnel.
+2. **Lieux** : clic droit sur l'icône → *Options* (ou le lien « Ajouter mes lieux » de la popup).
+   L'adresse est géocodée par l'API Adresse de l'IGN au moment de l'enregistrer, puis seules
+   ses coordonnées sont gardées dans `chrome.storage.sync` (5 lieux au plus).
+
+Le trajet part de la **position estimée** du logement (voir Localisation), un **jour ouvré à
+8 h 30**, pour que le résultat ne dépende pas de l'heure d'ouverture de la popup. La fourchette
+traduit l'incertitude de position en marche : `marge = rayon ÷ 80 m/min` ; le maximum ajoute la
+marge, le minimum la retire sans dépasser la marche jusqu'au premier arrêt. Au-delà de 1 500 m
+d'incertitude, aucun temps n'est affiché. Les itinéraires sont gardés 7 jours en cache.
+
+Sous chaque lieu, le détail du trajet s'affiche façon Citymapper : `🚶 3 › Ⓜ10 12 › 🚶 11`
+(une icône par étape, suivie de sa durée en minutes ; l'attente sur le quai est comptée dans la
+ligne qui suit). Un clic sur le lieu déplie l'itinéraire vertical, station par station :
+heures de passage, ligne et direction, nombre d'arrêts, correspondances et attente (le premier
+lieu est déplié d'office). Les pictogrammes officiels des lignes de métro, RER, Transilien et tram viennent
+du jeu *emplacement-des-gares-idf* d'Île-de-France Mobilités ; l'icône de marche vient de
+Material Symbols (Google, licence Apache 2.0). Ils sont versionnés dans `data/pictos/` ;
+pour les mettre à jour :
+
+```sh
+node scripts/telecharger-pictos.mjs
+```
+
+Les lignes sans pictogramme (bus, lignes récentes) s'affichent avec un badge à leurs couleurs.
+
 Le calcul compare le loyer aux **plafonds majorés** possibles. Quand seule l'époque de
 construction manque, la popup indique pour quelles époques le loyer dépasse le plafond.
 

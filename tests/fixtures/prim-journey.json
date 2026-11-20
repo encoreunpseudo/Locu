@@ -1,0 +1,144 @@
+{
+ "journeys": [
+  {
+   "duration": 1634,
+   "nb_transfers": 0,
+   "departure_date_time": "20261123T083055",
+   "arrival_date_time": "20261123T085809",
+   "durations": {
+    "total": 1634,
+    "walking": 894,
+    "bike": 0,
+    "car": 0,
+    "taxi": 0,
+    "ridesharing": 0
+   },
+   "sections": [
+    {
+     "type": "street_network",
+     "mode": "walking",
+     "duration": 208,
+     "departure_date_time": "20261123T083055",
+     "arrival_date_time": "20261123T083423",
+     "links": [],
+     "from": {
+      "name": "75 bis Rue de Lourmel (Paris)",
+      "embedded_type": "address"
+     },
+     "to": {
+      "name": "Charles Michels (Paris)",
+      "embedded_type": "stop_point"
+     }
+    },
+    {
+     "type": "public_transport",
+     "duration": 740,
+     "departure_date_time": "20261123T083423",
+     "arrival_date_time": "20261123T084643",
+     "display_informations": {
+      "commercial_mode": "Métro",
+      "code": "10",
+      "network": "RATP",
+      "direction": "Gare d'Austerlitz (Paris)",
+      "physical_mode": "Métro",
+      "label": "10",
+      "color": "DC9600",
+      "text_color": "000000"
+     },
+     "links": [
+      {
+       "id": "line:IDFM:C01380",
+       "type": "line"
+      }
+     ],
+     "stop_date_times": [
+      {
+       "stop_point": {
+        "name": "Charles Michels"
+       },
+       "departure_date_time": "20261123T083423"
+      },
+      {
+       "stop_point": {
+        "name": "Avenue Émile Zola"
+       },
+       "departure_date_time": "20261123T083545"
+      },
+      {
+       "stop_point": {
+        "name": "La Motte-Picquet - Grenelle"
+       },
+       "departure_date_time": "20261123T083710"
+      },
+      {
+       "stop_point": {
+        "name": "Ségur"
+       },
+       "departure_date_time": "20261123T083850"
+      },
+      {
+       "stop_point": {
+        "name": "Duroc"
+       },
+       "departure_date_time": "20261123T084033"
+      },
+      {
+       "stop_point": {
+        "name": "Vaneau"
+       },
+       "departure_date_time": "20261123T084153"
+      },
+      {
+       "stop_point": {
+        "name": "Sèvres - Babylone"
+       },
+       "departure_date_time": "20261123T084308"
+      },
+      {
+       "stop_point": {
+        "name": "Mabillon"
+       },
+       "departure_date_time": "20261123T084434"
+      },
+      {
+       "stop_point": {
+        "name": "Odéon"
+       },
+       "departure_date_time": "20261123T084601"
+      },
+      {
+       "stop_point": {
+        "name": "Cluny - La Sorbonne"
+       },
+       "departure_date_time": "20261123T084703"
+      }
+     ],
+     "from": {
+      "name": "Charles Michels (Paris)",
+      "embedded_type": "stop_point"
+     },
+     "to": {
+      "name": "Cluny - La Sorbonne (Paris)",
+      "embedded_type": "stop_point"
+     }
+    },
+    {
+     "type": "street_network",
+     "mode": "walking",
+     "duration": 686,
+     "departure_date_time": "20261123T084643",
+     "arrival_date_time": "20261123T085809",
+     "links": [],
+     "from": {
+      "name": "Cluny - La Sorbonne (Paris)",
+      "embedded_type": "stop_point"
+     },
+     "to": {
+      "name": "5 Rue des Fossés Saint-Jacques (Paris)",
+      "embedded_type": "address"
+     }
+    }
+   ]
+  }
+ ]
+}

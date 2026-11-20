@@ -1,18 +1,30 @@
 // Construit l'extension dans dist/ : c'est ce dossier qu'on charge dans chrome://extensions
 import { build } from "esbuild";
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+
+// Clé PRIM (calcul d'itinéraires IDFM) lue dans .env, jamais versionnée ; vide si absente.
+const env = existsSync(".env") ? Object.fromEntries(readFileSync(".env", "utf8").split(/\r?\n/)
+  .map((l) => l.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/)).filter(Boolean)
+  .map(([, cle, valeur]) => [cle, valeur.replace(/^(["'])(.*)\1$/, "$2")])) : {};
+const clePrim = process.env.PRIM_API_KEY ?? env.PRIM_API_KEY ?? "";
+if (!clePrim) console.warn("PRIM_API_KEY absente : les temps de trajet seront désactivés.");
 
 rmSync("dist", { recursive: true, force: true });
 
 await build({
-  entryPoints: { "popup/popup": "popup/popup.ts", "content/content": "content/content.ts" },
+  entryPoints: {
+    "popup/popup": "popup/popup.ts",
+    "content/content": "content/content.ts",
+    "options/options": "options/options.ts",
+  },
   outdir: "dist",
   bundle: true,
   format: "iife",
   target: "chrome110",
+  define: { __PRIM_API_KEY__: JSON.stringify(clePrim) },
 });
 
-for (const f of ["manifest.json", "background.js", "popup/popup.html", "popup/popup.css", "content/content.css", "options"]) {
+for (const f of ["manifest.json", "background.js", "popup/popup.html", "popup/popup.css", "content/content.css", "options/options.html", "data/pictos"]) {
   cpSync(f, `dist/${f}`, { recursive: true });
 }
 
