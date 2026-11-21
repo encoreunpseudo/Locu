@@ -24,20 +24,33 @@ interface Trajet {
 
 const URL_ITINERAIRES = "https://prim.iledefrance-mobilites.fr/marketplace/v2/navitia/journeys";
 
-/** Calculateur d'itinéraires d'Île-de-France Mobilités (PRIM, moteur Navitia). */
+/** Erreur PRIM typée : la page d'options distingue une clé refusée d'un réseau coupé. */
+export class ErreurPrim extends Error {
+  constructor(message: string, readonly code: "absente" | "refusee" | "quota" | "reseau" | "aucun") {
+    super(message);
+  }
+}
+
+/** Calculateur d'itinéraires d'Île-de-France Mobilités (PRIM, moteur Navitia), avec la clé de l'utilisateur. */
 export class ClientPrim {
   constructor(private readonly cle: string, private readonly requete: Requete = (url, init) => fetch(url, init)) {}
 
   /** `depart` au format Navitia, heure de Paris : AAAAMMJJTHHMMSS. */
   async itineraire(depart: Position, arrivee: Position, dateDepart: string): Promise<Itineraire> {
-    if (!this.cle) throw new Error("Clé PRIM absente (PRIM_API_KEY dans .env, puis npm run build)");
+    if (!this.cle) throw new ErreurPrim("Clé PRIM absente", "absente");
     const point = ([lon, lat]: Position) => `${lon.toFixed(6)};${lat.toFixed(6)}`;
     const url = `${URL_ITINERAIRES}?from=${point(depart)}&to=${point(arrivee)}&datetime=${dateDepart}&count=1`;
-    const reponse = await this.requete(url, { headers: { apikey: this.cle } });
-    if (reponse.status === 401 || reponse.status === 403) throw new Error("Clé PRIM refusée");
+    let reponse: Awaited<ReturnType<Requete>>;
+    try {
+      reponse = await this.requete(url, { headers: { apikey: this.cle } });
+    } catch {
+      throw new ErreurPrim("PRIM injoignable", "reseau");
+    }
+    if (reponse.status === 401 || reponse.status === 403) throw new ErreurPrim("Clé PRIM refusée", "refusee");
+    if (reponse.status === 429) throw new ErreurPrim("Quota PRIM dépassé, réessaie plus tard", "quota");
     const corps = await reponse.json().catch(() => ({})) as { journeys?: Trajet[] };
     const trajet = corps.journeys?.[0];
-    if (!reponse.ok || typeof trajet?.duration !== "number") throw new Error("Aucun itinéraire trouvé");
+    if (!reponse.ok || typeof trajet?.duration !== "number") throw new ErreurPrim("Aucun itinéraire trouvé", "aucun");
 
     const sections = trajet.sections ?? [];
     const premierTransport = sections.findIndex((s) => s.type === "public_transport");

@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { build } from "esbuild";
 import {
-  DepotLocalisation, DetecteurLieux, GeometrieLocale, LecteurJsonLd,
+  DepotLocalisation, DetecteurLieux, ExtracteurLocalisationJinka, GeometrieLocale, LecteurJsonLd,
   NormaliseurLieu, ReferentielQuartiers, ResolveurLocalisation, SourcesLieux,
 } from "../popup/localisation.ts";
 import { JinkaParseur } from "../popup/jinkaParseur.ts";
@@ -98,7 +98,7 @@ test("JSON-LD : JSON malformé, autre annonce et URL étrangère sont ignorés",
   script.type = "application/ld+json";
   script.textContent = "{invalide";
   dom.window.document.body.append(script);
-  const lecteur = new LecteurJsonLd();
+  const lecteur = new LecteurJsonLd(ExtracteurLocalisationJinka.identifiantAnnonce);
   assert.equal(lecteur.coordonnees(dom.window.document, dom.window.location.href).length, 1);
   assert.deepEqual(lecteur.coordonnees(dom.window.document, "https://www.jinka.fr/ad/autre"), []);
   assert.deepEqual(lecteur.coordonnees(dom.window.document, "https://jinka.fr.evil.example/ad/autre"), []);
@@ -110,7 +110,7 @@ test("JSON-LD : tableaux et @graph, validation des nombres et dédoublonnage", (
   const dom = new JSDOM('<script type="application/ld+json"></script>', { url: "https://jinka.fr/ad/test" });
   const annonce = { "@type": ["RealEstateListing"], url: "https://www.jinka.fr/ad/test?x=1", mainEntity: { geo: { longitude: 2.3, latitude: 48.85 } } };
   dom.window.document.querySelector("script").textContent = JSON.stringify({ "@graph": [annonce, annonce, { ...annonce, mainEntity: { geo: { longitude: "2.3", latitude: 48.85 } } }] });
-  assert.deepEqual(new LecteurJsonLd().coordonnees(dom.window.document, dom.window.location.href), [[2.3, 48.85]]);
+  assert.deepEqual(new LecteurJsonLd(ExtracteurLocalisationJinka.identifiantAnnonce).coordonnees(dom.window.document, dom.window.location.href), [[2.3, 48.85]]);
   dom.window.close();
 });
 
@@ -409,4 +409,10 @@ test("Noms de quartiers du référentiel des voies : tous reconnus", () => {
   for (const nom of ["Chapelle", "Sainte-Avoye", "Pont de Flandres", "Javel", "Saint-Lambert", "Necker"]) {
     assert.equal(paris.parNom(nom).length, 1, nom);
   }
+});
+
+test("Abréviations de voies : pl., fbg, imp. normalisées", () => {
+  assert.equal(NormaliseurLieu.normaliser("12 pl. d'Italie"), "12 place d italie");
+  assert.equal(NormaliseurLieu.normaliser("Fbg Saint-Antoine"), "faubourg st antoine");
+  assert.equal(NormaliseurLieu.normaliser("imp. Delépine"), "impasse delepine");
 });

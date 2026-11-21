@@ -1,6 +1,7 @@
 import { estDansEncadrementData, type FourchetteEncadrement, type Logement } from "./checkEncadrementLoyers";
 import type { PositionEstimee } from "./localisation";
-import { lireLieux, tempsTrajets, type TempsTrajet } from "./tempsMetro";
+import { lireClePrim, lireLieux, tempsTrajets, type TempsTrajet } from "./tempsMetro";
+import { ClientPrim } from "./trajets/ClientPrim";
 import type { Etape } from "./trajets/types";
 
 const resultatEl = document.getElementById("resultat")!;
@@ -150,7 +151,7 @@ async function verifierOngletActif() {
     return;
   }
   if (!logement) {
-    afficher("inconnu", "Ouvre une annonce Jinka pour la vérifier.");
+    afficher("inconnu", "Ouvre une annonce d'un site pris en charge (Jinka, Leboncoin) pour la vérifier.");
     return;
   }
 
@@ -170,18 +171,26 @@ async function afficherTrajets(position?: PositionEstimee) {
   if (!trajetsEl) return;
   const entete = (lien: string) => `<div class="entete-trajets"><span class="etiquette">Trajets</span>` +
     `<button class="lien" data-options>${echapper(lien)}</button></div>`;
-  const lieux = await lireLieux();
+  const message = (lien: string, texte: string) =>
+    `<div class="section trajets">${entete(lien)}<div class="contexte">${echapper(texte)}</div></div>`;
+  const [lieux, cle] = await Promise.all([lireLieux(), lireClePrim()]);
   if (!lieux.length) {
-    trajetsEl.innerHTML = `<div class="section trajets">${entete("Ajouter mes lieux")}` +
-      `<div class="contexte">Enregistre ton travail ou ta fac pour voir le temps de trajet depuis chaque annonce.</div></div>`;
+    trajetsEl.innerHTML = message("Configurer",
+      `Enregistre ton travail ou ta fac${cle ? "" : ", et ta clé PRIM gratuite,"} pour voir le temps de trajet depuis chaque annonce.`);
+  } else if (!cle) {
+    trajetsEl.innerHTML = message("Ajouter ma clé", "Ajoute ta clé PRIM (gratuite) dans les options pour voir les temps de trajet.");
   } else if (!position) {
-    trajetsEl.innerHTML = `<div class="section trajets">${entete("Mes lieux")}<div class="contexte">Position du logement inconnue.</div></div>`;
+    trajetsEl.innerHTML = message("Mes lieux", "Position du logement inconnue.");
   } else {
-    trajetsEl.innerHTML = `<div class="section trajets">${entete("Mes lieux")}<div class="contexte">Calcul des trajets…</div></div>`;
-    const [temps, pictos] = await Promise.all([tempsTrajets(position, lieux), pictogrammesDisponibles()]);
-    const contexte = `En semaine, départ 8 h 30 · depuis ${position.source} (à ${position.rayonMetres} m près)`;
-    trajetsEl.innerHTML = `<div class="section trajets">${entete("Mes lieux")}${temps.map((t, i) => ligneTrajet(t, pictos, i === 0)).join("")}` +
-      `<div class="contexte">${echapper(contexte)}</div></div>`;
+    trajetsEl.innerHTML = message("Mes lieux", "Calcul des trajets…");
+    const [temps, pictos] = await Promise.all([tempsTrajets(position, lieux, new ClientPrim(cle)), pictogrammesDisponibles()]);
+    if (temps.every((t) => t.erreur === "Clé PRIM refusée")) {
+      trajetsEl.innerHTML = message("Vérifier ma clé", "Ta clé PRIM a été refusée : vérifie-la dans les options.");
+    } else {
+      const contexte = `En semaine, départ 8 h 30 · depuis ${position.source} (à ${position.rayonMetres} m près)`;
+      trajetsEl.innerHTML = `<div class="section trajets">${entete("Mes lieux")}${temps.map((t, i) => ligneTrajet(t, pictos, i === 0)).join("")}` +
+        `<div class="contexte">${echapper(contexte)}</div></div>`;
+    }
   }
   trajetsEl.querySelector("[data-options]")?.addEventListener("click", () => chrome.runtime.openOptionsPage());
 }

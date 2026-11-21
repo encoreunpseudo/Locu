@@ -4,4 +4,5 @@ extension.zip
 .DS_Store
 .tests-*/
 exemplesJinka/*_files/
+exemplesLBC/*_files/
 .env

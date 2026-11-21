@@ -4,6 +4,7 @@ export class NormaliseurLieu {
       .toLowerCase().replace(/œ/g, "oe")
       .replace(/\bsaint\b/g, "st").replace(/\bsainte\b/g, "ste")
       .replace(/\bbd\b/g, "boulevard").replace(/\bav\b/g, "avenue")
+      .replace(/\bpl\b/g, "place").replace(/\bf(?:b?g)\b/g, "faubourg").replace(/\bimp\b/g, "impasse")
       .replace(/[^a-z0-9]+/g, " ").trim();
   }
 

@@ -2,7 +2,8 @@
 export { DepotLocalisation } from "./localisation/DepotLocalisation";
 export { DetecteurLieux } from "./localisation/DetecteurLieux";
 export { ExtracteurLocalisationJinka } from "./localisation/ExtracteurLocalisationJinka";
-export { LecteurJsonLd } from "./localisation/LecteurJsonLd";
+export { ExtracteurLocalisationLeboncoin } from "./localisation/ExtracteurLocalisationLeboncoin";
+export { LecteurJsonLd, type IdentifiantAnnonce } from "./localisation/LecteurJsonLd";
 export { NormaliseurLieu } from "./localisation/NormaliseurLieu";
 export { GeometrieLocale } from "./localisation/GeometrieLocale";
 export { ReferentielQuartiers } from "./localisation/ReferentielQuartiers";

@@ -7,6 +7,7 @@ import { ClientPrim } from "../popup/trajets/ClientPrim.ts";
 import { Geocodeur } from "../popup/trajets/Geocodeur.ts";
 import { fourchette, prochainDepart } from "../popup/trajets/EstimateurTrajet.ts";
 import { tempsTrajets } from "../popup/tempsMetro.ts";
+import { verifierClePrim } from "../popup/trajets/CleUtilisateur.ts";
 
 // Réponse PRIM réelle (37 m² rue de Lourmel → 5e), allégée : marche 208 s, métro 10, marche 686 s.
 const reponsePrim = JSON.parse(readFileSync("tests/fixtures/prim-journey.json", "utf8"));
@@ -85,6 +86,19 @@ test("PRIM : trajet à pied, clé absente ou refusée, aucun itinéraire", async
   await assert.rejects(new ClientPrim("cle", primFixe([], { journeys: [] })).itineraire([2.3, 48.85], fac.position, "x"), /Aucun itinéraire/);
 });
 
+test("Vérification de la clé : valide, refusée, quota, réseau coupé", async () => {
+  const verifier = (requete) => verifierClePrim("cle", new ClientPrim("cle", requete), new Date("2026-11-20T19:00:00Z"));
+  const appels = [];
+  assert.equal(await verifier(primFixe(appels)), "valide");
+  assert.match(appels[0].url, /datetime=20261123T083000/);
+  // PRIM a accepté la clé, même sans trajet trouvé.
+  assert.equal(await verifier(primFixe([], { journeys: [] })), "valide");
+  assert.equal(await verifier(primFixe([], {}, 401)), "refusee");
+  assert.equal(await verifier(primFixe([], {}, 429)), "quota");
+  assert.equal(await verifier(async () => { throw new TypeError("Failed to fetch"); }), "reseau");
+  assert.equal(await verifierClePrim("  "), "absente");
+});
+
 test("Écart : marge de marche selon le rayon, bornée par la marche de départ", () => {
   const itineraire = { duree: 1634, marcheDepart: 208, marche: 894, correspondances: 0, lignes: ["Métro 10"] };
   // 150 m ≈ 1 min 53 de marche : 25–29 min.
@@ -146,7 +160,8 @@ const quartiersParis = [...new Map(geojson.features.map(({ properties: p, geomet
   id: p.code_grand_quartier, nom: p.nom_quartier, arrondissement: Math.floor(p.code_grand_quartier / 100) % 100, geometrie: geometry,
 }])).values()];
 
-async function ouvrirPopup(lieuxEnregistres, appelsPrim = []) {
+// La clé PRIM vient du stockage local de l'extension, saisie par l'utilisateur dans les options.
+async function ouvrirPopup(lieuxEnregistres, appelsPrim = [], { cle = "cle-popup", statutPrim = 200 } = {}) {
   const { JinkaParseur } = await import("../popup/jinkaParseur.ts");
   const annonce = exemple(37);
   const logement = new JinkaParseur().parser(annonce.window.document);
@@ -159,7 +174,7 @@ async function ouvrirPopup(lieuxEnregistres, appelsPrim = []) {
     tabs: { query: async () => [{ id: 1 }], sendMessage: async () => ({ logement }) },
     storage: {
       sync: { get: async () => ({ lieux: lieuxEnregistres }) },
-      local: { get: async () => ({}), set: async () => {} },
+      local: { get: async (k) => k === "clePrim" && cle ? { clePrim: cle } : {}, set: async () => {} },
     },
   };
   window.fetch = async (url, init) => {
@@ -169,30 +184,47 @@ async function ouvrirPopup(lieuxEnregistres, appelsPrim = []) {
     }
     if (url.includes("prim.iledefrance-mobilites.fr")) {
       appelsPrim.push({ url, init });
-      return { ok: true, status: 200, json: async () => reponsePrim };
+      return { ok: statutPrim === 200, status: statutPrim, json: async () => statutPrim === 200 ? reponsePrim : {} };
     }
     const u = decodeURIComponent(url);
     const corps = u.includes("emplacement-des-gares") ? lieux.gares
       : u.includes("geo_shape") ? lieux.traces[u.match(/typo_min="([^"]+)"/)[1]] ?? [] : lieux.voies;
     return { ok: true, json: async () => corps };
   };
-  const compilation = await build({ entryPoints: ["popup/popup.ts"], bundle: true, write: false, format: "iife",
-    define: { __PRIM_API_KEY__: '"cle-popup"' } });
+  const compilation = await build({ entryPoints: ["popup/popup.ts"], bundle: true, write: false, format: "iife" });
   window.eval(compilation.outputFiles[0].text);
   const trajets = window.document.getElementById("trajets");
-  for (let i = 0; i < 50 && !/min|Ajouter/.test(trajets.textContent); i++) await new Promise((r) => setTimeout(r, 10));
+  for (let i = 0; i < 50 && !/ min|Configurer|Ajouter ma clé|Vérifier ma clé/.test(trajets.textContent); i++) {
+    await new Promise((r) => setTimeout(r, 10));
+  }
   return { window, trajets, options };
 }
 
-test("Popup : sans lieu enregistré, invitation à les ajouter", async () => {
-  const { window, trajets, options } = await ouvrirPopup(undefined);
-  assert.match(trajets.textContent, /Ajouter mes lieux/);
+test("Popup : sans lieu ni clé, invitation à configurer", async () => {
+  const { window, trajets, options } = await ouvrirPopup(undefined, [], { cle: "" });
+  assert.match(trajets.textContent, /Configurer/);
+  assert.match(trajets.textContent, /ta clé PRIM gratuite/);
   trajets.querySelector("[data-options]").click();
   assert.equal(options.length, 1);
   window.close();
 });
 
-test("Popup : temps vers chaque lieu, avec la clé du build et le texte échappé", async () => {
+test("Popup : lieux sans clé, aucun appel PRIM et lien vers les options", async () => {
+  const appels = [];
+  const { window, trajets } = await ouvrirPopup([fac], appels, { cle: "" });
+  assert.match(trajets.textContent, /Ajouter ma clé/);
+  assert.equal(appels.length, 0);
+  window.close();
+});
+
+test("Popup : clé refusée, un seul message au lieu d'une erreur par lieu", async () => {
+  const { window, trajets } = await ouvrirPopup([fac, { ...fac, id: "b", nom: "Travail" }], [], { statutPrim: 401 });
+  assert.match(trajets.textContent, /Vérifier ma clé/);
+  assert.doesNotMatch(trajets.textContent, /Travail/);
+  window.close();
+});
+
+test("Popup : temps vers chaque lieu, avec la clé de l'utilisateur et le texte échappé", async () => {
   const appels = [];
   const { window, trajets } = await ouvrirPopup([{ ...fac, nom: 'Fac <img src=x onerror="alert(1)">' }], appels);
   assert.match(trajets.textContent, /25–29 min/);

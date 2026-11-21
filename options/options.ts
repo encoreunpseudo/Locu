@@ -1,3 +1,4 @@
+import { enregistrerClePrim, lireClePrim, supprimerClePrim, verifierClePrim } from "../popup/trajets/CleUtilisateur";
 import { Geocodeur } from "../popup/trajets/Geocodeur";
 import type { Lieu } from "../popup/trajets/types";
 import type { Position } from "../popup/localisation/types";
@@ -22,7 +23,7 @@ let derniereRecherche = 0;
 
 function statut(texte: string, erreur = false) {
   statutEl.textContent = texte;
-  statutEl.className = erreur ? "erreur" : "";
+  statutEl.className = erreur ? "statut erreur" : "statut";
 }
 
 async function enregistrer() {
@@ -150,4 +151,60 @@ formulaire.addEventListener("submit", async (e) => {
 chrome.storage.sync.get("lieux").then(({ lieux: enregistres }) => {
   lieux = Array.isArray(enregistres) ? enregistres : [];
   afficherLieux();
+});
+
+// --- Clé PRIM personnelle ---
+
+const formCle = document.getElementById("form-cle") as HTMLFormElement;
+const cleEl = document.getElementById("cle") as HTMLInputElement;
+const testerEl = document.getElementById("tester") as HTMLButtonElement;
+const afficherCleEl = document.getElementById("afficher-cle") as HTMLButtonElement;
+const supprimerCleEl = document.getElementById("supprimer-cle") as HTMLButtonElement;
+const statutCleEl = document.getElementById("statut-cle") as HTMLParagraphElement;
+
+function statutCle(texte: string, etat: "" | "ok" | "erreur" = "") {
+  statutCleEl.textContent = texte;
+  statutCleEl.className = `statut ${etat}`.trim();
+}
+
+afficherCleEl.addEventListener("click", () => {
+  const visible = cleEl.type === "password";
+  cleEl.type = visible ? "text" : "password";
+  afficherCleEl.textContent = visible ? "Masquer" : "Afficher";
+  afficherCleEl.setAttribute("aria-pressed", String(visible));
+});
+
+formCle.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const cle = cleEl.value.trim();
+  if (!cle) {
+    statutCle("Colle d'abord ta clé.", "erreur");
+    return;
+  }
+  testerEl.disabled = true;
+  statutCle("Test de la clé auprès de PRIM…");
+  const resultat = await verifierClePrim(cle);
+  testerEl.disabled = false;
+  if (resultat === "refusee") {
+    statutCle("Clé refusée par PRIM : vérifie qu'elle est complète. Elle n'a pas été enregistrée.", "erreur");
+    return;
+  }
+  await enregistrerClePrim(cle);
+  supprimerCleEl.hidden = false;
+  if (resultat === "valide") statutCle("Clé valide et enregistrée.", "ok");
+  else if (resultat === "quota") statutCle("Clé enregistrée, mais le quota PRIM est atteint : vérification impossible pour l'instant.");
+  else statutCle("Clé enregistrée, mais PRIM est injoignable : elle n'a pas pu être vérifiée.");
+});
+
+supprimerCleEl.addEventListener("click", async () => {
+  await supprimerClePrim();
+  cleEl.value = "";
+  supprimerCleEl.hidden = true;
+  statutCle("Clé supprimée de ce navigateur.");
+});
+
+lireClePrim().then((cle) => {
+  cleEl.value = cle;
+  supprimerCleEl.hidden = !cle;
+  if (cle) statutCle("Clé enregistrée.", "ok");
 });

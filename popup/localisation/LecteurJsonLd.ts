@@ -3,8 +3,13 @@ import type { Position } from "./types";
 
 type ObjetJson = Record<string, unknown>;
 
+/** Identifiant de l'annonce désignée par une URL, propre à chaque site ; undefined si l'URL n'est pas une annonce du site. */
+export type IdentifiantAnnonce = (url: string) => string | undefined;
+
 /** Lit uniquement le JSON déclaratif rattaché à l'URL active ; n'exécute jamais les scripts. */
 export class LecteurJsonLd {
+  constructor(private readonly identifiantAnnonce: IdentifiantAnnonce) {}
+
   coordonnees(doc: Document, urlActive: string): Position[] {
     const identifiant = this.identifiantAnnonce(urlActive);
     if (!identifiant) return [];
@@ -24,14 +29,6 @@ export class LecteurJsonLd {
       }
     }
     return positions;
-  }
-
-  private identifiantAnnonce(valeur: string): string | undefined {
-    try {
-      const url = new URL(valeur);
-      if (url.hostname !== "jinka.fr" && !url.hostname.endsWith(".jinka.fr")) return undefined;
-      return url.pathname.match(/^\/ad\/([^/]+)\/?$/)?.[1];
-    } catch { return undefined; }
   }
 
   private *objets(valeur: unknown): Generator<ObjetJson> {

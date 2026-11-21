@@ -46,6 +46,8 @@ export interface StationDetectee {
 }
 
 export interface IndicesLocalisation {
+  /** Site de l'annonce (« Jinka »…), pour citer la source du quartier affiché. */
+  site?: string;
   quartier?: string;
   arrondissement?: number;
   coordonnees: Position[];

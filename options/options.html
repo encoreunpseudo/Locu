@@ -2,11 +2,11 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Mes lieux – Encadrement des loyers</title>
+  <title>Temps de trajet – Encadrement des loyers</title>
   <style>
-    :root { --fond: #fff; --surface: #f6f7f9; --bordure: #e5e7eb; --texte: #111827; --discret: #6b7280; --accent: #1d4ed8; --rouge: #b91c1c; }
+    :root { --fond: #fff; --surface: #f6f7f9; --bordure: #e5e7eb; --texte: #111827; --discret: #6b7280; --accent: #1d4ed8; --rouge: #b91c1c; --vert: #15803d; }
     @media (prefers-color-scheme: dark) {
-      :root { --fond: #18191c; --surface: #222327; --bordure: #33353a; --texte: #f3f4f6; --discret: #9ca3af; --accent: #93c5fd; --rouge: #fca5a5; }
+      :root { --fond: #18191c; --surface: #222327; --bordure: #33353a; --texte: #f3f4f6; --discret: #9ca3af; --accent: #93c5fd; --rouge: #fca5a5; --vert: #86efac; }
     }
     body { font: 14px/1.5 system-ui, -apple-system, sans-serif; color: var(--texte); background: var(--fond); max-width: 520px; margin: 40px auto; padding: 0 16px; }
     h1 { font-size: 20px; margin: 0 0 4px; }
@@ -28,14 +28,43 @@
     button[type="submit"] { background: var(--accent); border-color: var(--accent); color: var(--fond); font-weight: 600; justify-self: start; }
     button:disabled { opacity: 0.5; cursor: default; }
     button.supprimer { padding: 4px 10px; font-size: 13px; }
-    #statut { min-height: 1.5em; color: var(--discret); }
-    #statut.erreur { color: var(--rouge); }
+    .statut { min-height: 1.5em; margin: 0; color: var(--discret); }
+    .statut.erreur { color: var(--rouge); }
+    .statut.ok { color: var(--vert); }
+    h2 { font-size: 16px; margin: 32px 0 4px; }
+    h2:first-of-type { margin-top: 24px; }
+    ol.guide { margin: 0 0 14px; padding-left: 20px; color: var(--discret); }
+    ol.guide a { color: var(--accent); }
+    .boutons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .champ-cle { display: flex; gap: 8px; }
+    .champ-cle input { flex: 1; min-width: 0; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
   </style>
 </head>
 <body>
-  <h1>Mes lieux</h1>
-  <p class="aide">Travail, université… La popup affichera le temps en transports en commun depuis chaque annonce, un jour de semaine à 8&nbsp;h&nbsp;30.</p>
+  <h1>Temps de trajet</h1>
+  <p class="aide">La popup affiche le temps en transports en commun depuis chaque annonce vers tes lieux (travail, université…), un jour de semaine à 8&nbsp;h&nbsp;30.</p>
 
+  <h2>1. Ta clé PRIM</h2>
+  <p class="aide">Les itinéraires viennent du calculateur d'Île-de-France Mobilités. Il faut une clé personnelle, gratuite :</p>
+  <ol class="guide">
+    <li>Crée un compte sur <a href="https://prim.iledefrance-mobilites.fr" target="_blank" rel="noopener">prim.iledefrance-mobilites.fr</a>.</li>
+    <li>Dans ton espace, génère ta clé d'API (jeton d'authentification).</li>
+    <li>Colle-la ci-dessous. Elle reste dans ce navigateur et n'est envoyée qu'à PRIM.</li>
+  </ol>
+  <form id="form-cle">
+    <label for="cle">Clé</label>
+    <div class="champ-cle">
+      <input id="cle" type="password" autocomplete="off" spellcheck="false" placeholder="Colle ta clé ici">
+      <button type="button" id="afficher-cle" aria-pressed="false">Afficher</button>
+    </div>
+    <div class="boutons">
+      <button type="submit" id="tester">Enregistrer et tester</button>
+      <button type="button" id="supprimer-cle" hidden>Supprimer la clé</button>
+    </div>
+    <p id="statut-cle" class="statut" role="status"></p>
+  </form>
+
+  <h2>2. Mes lieux</h2>
   <ul id="lieux"></ul>
 
   <form id="ajout">
@@ -46,7 +75,7 @@
       <ul id="suggestions" role="listbox"></ul>
     </div>
     <button type="submit" id="ajouter" disabled>Ajouter</button>
-    <p id="statut" role="status"></p>
+    <p id="statut" class="statut" role="status"></p>
   </form>
 
   <script src="options.js"></script>

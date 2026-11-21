@@ -27,10 +27,11 @@ export class ResolveurLocalisation {
     const base = entree.arrondissement != null ? this.quartiers.parArrondissement(entree.arrondissement) : [];
     const dansBase = (q: Quartier) => entree.arrondissement == null || q.arrondissement === entree.arrondissement;
 
-    // 1. Le quartier affiché par Jinka suffit.
+    // 1. Le quartier affiché par le site suffit.
     if (entree.quartier) {
       const trouves = this.quartiers.parNom(entree.quartier);
-      indices.push({ type: "quartier", libelle: entree.quartier, source: "Quartier affiché par Jinka", quartiers: trouves.map((q) => q.id) });
+      const source = `Quartier affiché par ${entree.site ?? "l'annonce"}`;
+      indices.push({ type: "quartier", libelle: entree.quartier, source, quartiers: trouves.map((q) => q.id) });
       const coherents = trouves.filter(dansBase);
       if (coherents.length === 1) return { statut: "renseignee", quartiers: [resume(coherents[0])], indices, avertissements };
       if (!trouves.length) {
@@ -43,8 +44,13 @@ export class ResolveurLocalisation {
       }
     }
 
-    // 2. À défaut, chaque indice (position, rue, station) vote pour les quartiers qu'il permet.
+    // 2. À défaut, chaque indice (quartier cité, position, rue, station) vote pour les quartiers qu'il permet.
     const votes: { source: string; quartiers: Quartier[] }[] = [];
+    for (const q of entree.texte ? this.quartiers.citesDans(entree.texte) : []) {
+      const trouves = dansBase(q) ? [q] : [];
+      indices.push({ type: "quartier", libelle: q.nom, source: "Quartier cité dans l'annonce", quartiers: trouves.map((t) => t.id) });
+      if (trouves.length) votes.push({ source: `quartier ${q.nom} cité`, quartiers: trouves });
+    }
     const contenants = new Map<number, Quartier>();
     for (const position of entree.coordonnees) {
       const trouves = this.quartiers.contenant(position).filter(dansBase);

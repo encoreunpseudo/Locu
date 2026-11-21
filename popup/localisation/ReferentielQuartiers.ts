@@ -23,6 +23,21 @@ export class ReferentielQuartiers {
     return this.noms.get(NormaliseurLieu.normaliser(nom)) ?? [];
   }
 
+  /**
+   * Quartiers nommés juste après le mot « quartier » (« au cœur du quartier de Clignancourt »).
+   * Le nom doit suivre immédiatement : « quartier calme près de la gare » ne cite pas le quartier Gare.
+   */
+  citesDans(texte: string): Quartier[] {
+    const normalise = NormaliseurLieu.normaliser(texte);
+    const suites = [...normalise.matchAll(/(?:^| )quartiers? (?:(?:de la|de l|du|des|de|d|la|le|l) )?/g)]
+      .map((m) => normalise.slice(m.index! + m[0].length));
+    const trouves = new Map<number, Quartier>();
+    for (const [nom, quartiers] of this.noms) {
+      if (suites.some((s) => (`${s} `).startsWith(`${nom} `))) for (const q of quartiers) trouves.set(q.id, q);
+    }
+    return [...trouves.values()];
+  }
+
   parArrondissement(arrondissement: number): Quartier[] {
     return this.quartiers.filter((q) => q.arrondissement === arrondissement);
   }

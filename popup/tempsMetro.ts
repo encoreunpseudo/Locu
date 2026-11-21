@@ -1,10 +1,10 @@
-import { CLE_PRIM } from "./config";
 import type { PositionEstimee } from "./localisation/types";
 import { ClientPrim } from "./trajets/ClientPrim";
 import { fourchette, prochainDepart, RAYON_MAX } from "./trajets/EstimateurTrajet";
 import type { Itineraire, Lieu, TempsTrajet } from "./trajets/types";
 
 export type { Lieu, TempsTrajet } from "./trajets/types";
+export { lireClePrim } from "./trajets/CleUtilisateur";
 
 const DUREE_CACHE = 7 * 24 * 3600 * 1000;
 
@@ -19,7 +19,7 @@ export async function lireLieux(): Promise<Lieu[]> {
 
 /** Temps vers chaque lieu enregistré depuis la position estimée du logement ; un échec n'empêche pas les autres. */
 export async function tempsTrajets(
-  position: PositionEstimee, lieux: Lieu[], client = new ClientPrim(CLE_PRIM), maintenant = new Date(),
+  position: PositionEstimee, lieux: Lieu[], client: ClientPrim, maintenant = new Date(),
 ): Promise<TempsTrajet[]> {
   if (position.rayonMetres > RAYON_MAX) {
     return lieux.map((lieu) => ({ lieu, erreur: "Position du logement trop imprécise" }));

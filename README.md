@@ -20,7 +20,7 @@ déclarer `"icons"` et `"action.default_icon"` dans le manifest (16/48/128 px).
 3. Activer **Mode développeur** (en haut à droite)
 4. **Charger l'extension non empaquetée** → choisir le dossier **`dist/`** (pas la racine : `node_modules` empêche le chargement)
 5. Après chaque modification : `npm run build`, puis cliquer sur ↻ dans la carte de l'extension
-6. Ouvrir une annonce Jinka, la recharger, puis cliquer sur l'icône de l'extension
+6. Ouvrir une annonce Jinka ou Leboncoin (location), la recharger, puis cliquer sur l'icône de l'extension
 
 ## Déboguer
 
@@ -33,7 +33,7 @@ déclarer `"icons"` et `"action.default_icon"` dans le manifest (16/48/128 px).
 ```sh
 npm run build  # reconstruit dist/, prêt à charger dans Chrome
 npm run zip    # reconstruit dist/ puis crée extension.zip à la racine
-npm test       # tests locaux sur les deux annonces et les cas ambigus
+npm test       # tests locaux sur les annonces d'exemple et les cas ambigus
 ```
 
 Le ZIP contient directement `manifest.json`, les scripts et les données, sans dossier
@@ -43,7 +43,7 @@ Le ZIP contient directement `manifest.json`, les scripts et les données, sans d
 
 Le quartier est déterminé dans cet ordre :
 
-1. **Quartier affiché par Jinka** (ex. « Javel », « Grenelle »), s'il est reconnu et
+1. **Quartier affiché par le site** (ex. « Javel », « Grenelle »), s'il est reconnu et
    cohérent avec l'arrondissement du titre. C'est le cas normal.
 2. **Croisement des indices** : la position de l'annonce (JSON-LD) placée dans les polygones
    du barème, les **voies** citées dans la description (« rue de Lourmel » → Grenelle, Javel)
@@ -73,13 +73,19 @@ localisation continue avec les indices locaux et le signale.
 La popup affiche le temps en transports en commun entre le logement et les lieux de
 l'utilisateur (travail, université…), par exemple « Fac · 25–29 min · Métro 10 · direct ».
 
-1. **Clé PRIM** : créer un compte sur [prim.iledefrance-mobilites.fr](https://prim.iledefrance-mobilites.fr),
-   puis mettre la clé dans `.env` à la racine (fichier ignoré par git) :
-   `PRIM_API_KEY=...`, puis `npm run build`. ⚠️ La clé est intégrée en clair dans `dist/` et
-   `extension.zip` : ne pas distribuer ce ZIP au-delà d'un usage personnel.
-2. **Lieux** : clic droit sur l'icône → *Options* (ou le lien « Ajouter mes lieux » de la popup).
-   L'adresse est géocodée par l'API Adresse de l'IGN au moment de l'enregistrer, puis seules
-   ses coordonnées sont gardées dans `chrome.storage.sync` (5 lieux au plus).
+Tout se règle dans les options (clic droit sur l'icône → *Options*, ou le lien de la popup) :
+
+1. **Clé PRIM personnelle** : chaque utilisateur crée gratuitement la sienne sur
+   [prim.iledefrance-mobilites.fr](https://prim.iledefrance-mobilites.fr) et la colle dans les
+   options. Le bouton « Enregistrer et tester » l'essaie sur un vrai trajet (Châtelet → Gare de
+   Lyon) : une clé refusée n'est pas enregistrée. La clé est gardée dans `chrome.storage.local`
+   (cet appareil seulement) et n'est envoyée qu'à PRIM. Aucune clé n'est intégrée à l'extension :
+   elle peut être distribuée telle quelle.
+2. **Lieux** : l'adresse est géocodée par l'API Adresse de l'IGN au moment de l'enregistrer,
+   puis seules ses coordonnées sont gardées dans `chrome.storage.sync` (5 lieux au plus).
+
+Sans clé ou sans lieu, la popup invite à les ajouter ; si PRIM refuse la clé, elle le dit
+une seule fois au lieu d'afficher une erreur par lieu.
 
 Le trajet part de la **position estimée** du logement (voir Localisation), un **jour ouvré à
 8 h 30**, pour que le résultat ne dépende pas de l'heure d'ouverture de la popup. La fourchette
@@ -105,5 +111,22 @@ Les lignes sans pictogramme (bus, lignes récentes) s'affichent avec un badge à
 Le calcul compare le loyer aux **plafonds majorés** possibles. Quand seule l'époque de
 construction manque, la popup indique pour quelles époques le loyer dépasse le plafond.
 
-Le barème fourni s'arrête à **2025** (baux signés du 1er juillet 2025 au 30 juin 2026) ;
-la popup signale quand il est périmé.
+## Barème
+
+Le barème vient du geojson open data de la Ville de Paris (*logement-encadrement-des-loyers*,
+2019 à 2025, polygones des quartiers compris). La Ville n'y a pas ajouté la grille 2026 : elle
+est importée directement de l'arrêté préfectoral du 12 juin 2026 (IDF-2026-06-12-00003), qui
+donne les loyers par secteur géographique (annexe 2) et le secteur de chaque quartier (annexe 1).
+Le résultat, `data/encadrement-2026.json`, a le même format que les lignes du geojson ; le build
+l'ajoute au barème, sauf si l'année est entre-temps publiée en open data.
+
+```sh
+brew install poppler   # fournit pdftotext
+node scripts/importer-arrete.mjs 2026 https://cdn.paris.fr/paris/2026/06/17/arrete-prefectoral-encadrement-des-loyers-12-06-2026-publie-n4wk.pdf
+```
+
+Le script vérifie la cohérence de la grille (minoré = −30 %, majoré = +20 %, meublé = référence
++ majoration) ; appliqué à l'arrêté 2025, il redonne exactement les lignes 2025 du geojson.
+
+L'arrêté 2026 s'applique du 1er juillet au **24 novembre 2026**, fin de l'expérimentation prévue
+par la loi ELAN, sauf prolongation par la loi. La popup signale quand le barème est périmé.
