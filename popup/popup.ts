@@ -15,7 +15,7 @@ const NOMS_CHAMPS: Record<string, string> = {
   meuble: "meublé / non meublé",
 };
 
-// L'icône du verdict (Lucide) est choisie en CSS selon la classe.
+// L'icône du verdict (Lucide) est choisie en CSS selon la classe ; la jauge est ajoutée ensuite.
 function afficher(classe: string, titre: string, details = "", sousTitre = "") {
   resultatEl.className = `resultat ${classe}`;
   resultatEl.innerHTML = `<span class="icone" aria-hidden="true"></span><div><div class="titre">${echapper(titre)}</div>${
@@ -146,6 +146,33 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
     afficher("ok", "Dans l'encadrement des loyers", html, marge != null && marge > 0
       ? `${euros(Math.round(marge))} /mois sous le plafond` : "");
   }
+  resultatEl.insertAdjacentHTML("beforeend", jaugeHtml(f, prix, surface));
+}
+
+/**
+ * Jauge horizontale : zone conforme (vert), zone dépendant de l'année de construction (ambre)
+ * quand elle est inconnue, zone hors plafond (rouge), et un repère au niveau du loyer.
+ */
+function jaugeHtml(f: FourchetteEncadrement, prix: number | null, surface: number | null | undefined): string {
+  if (f.prixM2 == null || prix == null) return "";
+  const loyer = f.prixM2, bas = f.plafondMin, haut = f.max;
+  const debut = Math.min(f.min, loyer), fin = Math.max(haut, loyer);
+  const marge = (fin - debut) * 0.15 || 1;
+  const de = debut - marge, a = fin + marge;
+  const pos = (v: number) => `${(((v - de) / (a - de)) * 100).toFixed(1)}%`;
+  const montant = (m2: number) => surface ? euros(Math.round(m2 * surface)) : `${euros(m2)} /m²`;
+  const repere = (v: number, texte: string) =>
+    `<span class="jauge-repere" style="left:${pos(v)}"><span>${echapper(texte)}</span></span>`;
+  // Deux plafonds trop proches : une seule étiquette au milieu, sinon elles se chevauchent.
+  const proches = (haut - bas) / (a - de) < 0.22;
+  const plafonds = bas >= haut ? repere(haut, `Plafond ${montant(haut)}`)
+    : proches ? repere((bas + haut) / 2, `${montant(bas)} – ${montant(haut)}`)
+    : repere(bas, montant(bas)) + repere(haut, montant(haut));
+  return `<div class="jauge" role="img" aria-label="${echapper(`Loyer ${euros(prix)}, plafond ${montant(haut)}`)}">` +
+    `<div class="jauge-piste" style="--bas:${pos(bas)};--haut:${pos(haut)}">` +
+    `<span class="jauge-loyer" style="left:${pos(loyer)}"><span>Loyer ${echapper(euros(prix))}</span></span></div>` +
+    `<div class="jauge-reperes">${plafonds}</div>` +
+    (bas < haut ? `<div class="jauge-legende">Plafond selon l'année de construction</div>` : "") + `</div>`;
 }
 
 async function verifierOngletActif() {
