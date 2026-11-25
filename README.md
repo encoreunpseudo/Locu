@@ -1,5 +1,8 @@
 # Mon Extension – template Chrome (Manifest V3)
 
+<img width="681" height="563" alt="Capture d’écran 2026-11-25 à 20 56 19" src="https://github.com/user-attachments/assets/b98f5672-9cd9-4115-be8d-01ed7f16e7c4" />
+
+
 ## Structure
 
 ```
