@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Mon Extension",
+  "name": "Locu",
   "version": "1.0.0",
-  "description": "Template de base d'extension Chrome (Manifest V3).",
+  "description": "Flaire les loyers trop hauts à Paris : encadrement des loyers et temps de trajet, directement sur les annonces Jinka et Leboncoin.",
   "icons": {
     "16": "assets/icones-extension/icone-16.png",
     "32": "assets/icones-extension/icone-32.png",
@@ -16,7 +16,7 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Mon Extension",
+    "default_title": "Locu",
     "default_icon": {
       "16": "assets/icones-extension/icone-16.png",
       "32": "assets/icones-extension/icone-32.png"

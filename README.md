@@ -1,7 +1,22 @@
-# Locu, Extension Chrome
+# Locu
 
-<img width="681" height="563" alt="Capture d’écran 2026-11-25 à 20 56 19" src="https://github.com/user-attachments/assets/b98f5672-9cd9-4115-be8d-01ed7f16e7c4" />
+<img width="681" height="563" alt="Capture d’écran 2026-11-25 à 20 56 19" src="https://github.com/user-attachments/assets/b98f5672-9cd9-4115-be8d-01ed7f16e7c4" />
 
+Chercher un appartement à Paris, c'est enchaîner les annonces, les visites et les dossiers,
+pour des loyers qui montent d'année en année. C'est long, ingrat, et on finit souvent par
+accepter n'importe quoi, faute de temps et de choix. Pendant que l'immobilier devient toujours
+plus cher, le droit au logement, lui, paraît de moins en moins évident.
+
+Locu est une extension Chrome qui aide à **flairer les loyers trop hauts** et à **trier plus
+vite** les annonces. Sur une annonce Jinka ou Leboncoin, un clic suffit pour savoir :
+
+- si le loyer respecte l'**encadrement des loyers** parisien, et de combien il le dépasse ;
+- ce qui reste incertain (époque de construction, charges, quartier) et pourquoi ;
+- le **temps de trajet** en transports jusqu'à son travail ou sa fac.
+
+L'encadrement est une loi : un loyer au-dessus du plafond peut être contesté. Locu donne une
+estimation à partir de ce que dit l'annonce, pas un avis juridique ; en cas de doute, la
+Ville de Paris et l'ADIL 75 renseignent gratuitement.
 
 ## Structure
 
@@ -13,8 +28,9 @@ content/             Script + CSS injectés dans les pages web
 options/             Page de paramètres
 ```
 
-Pas d'icône fournie : Chrome affiche une lettre par défaut. Pour en ajouter,
-déclarer `"icons"` et `"action.default_icon"` dans le manifest (16/48/128 px).
+L'icône et le plan de Paris en fond de la popup viennent d'OpenStreetMap (© contributeurs
+OpenStreetMap, ODbL) ; `scripts/generer-carte-paris.mjs` et `scripts/generer-icones.mjs` les
+régénèrent. Police Plus Jakarta Sans (OFL), icônes Lucide (ISC).
 
 ## Installer en local
 
@@ -36,7 +52,8 @@ déclarer `"icons"` et `"action.default_icon"` dans le manifest (16/48/128 px).
 ```sh
 npm run build  # reconstruit dist/, prêt à charger dans Chrome
 npm run zip    # reconstruit dist/ puis crée extension.zip à la racine
-npm test       # tests locaux sur les annonces d'exemple et les cas ambigus
+npm test       # tests locaux ; ceux qui lisent les annonces d'exemple (exemplesJinka/, exemplesLBC/,
+               # non versionnées) sont sautés si elles sont absentes
 ```
 
 Le ZIP contient directement `manifest.json`, les scripts et les données, sans dossier
