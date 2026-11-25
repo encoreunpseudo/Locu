@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { build } from "esbuild";
@@ -9,6 +9,9 @@ import {
 } from "../popup/localisation.ts";
 import { JinkaParseur } from "../popup/jinkaParseur.ts";
 import { calculerEncadrement } from "../popup/checkEncadrementLoyers.ts";
+
+// Les pages d'annonces enregistrées (exemplesJinka/) ne sont pas versionnées : sans elles, ces tests sont sautés.
+const testExemple = existsSync("exemplesJinka") ? test : test.skip;
 
 const geojson = JSON.parse(readFileSync("data/logement-encadrement-des-loyers.geojson", "utf8"));
 const baremes = geojson.features.map((f) => f.properties);
@@ -43,7 +46,7 @@ function exemple(surface) {
   return new JSDOM(html, { url }); // Pas d'exécution des scripts Jinka, pas de chargement réseau.
 }
 
-test("35 m² : extraction du DOM et des charges, sans exécuter Jinka", () => {
+testExemple("35 m² : extraction du DOM et des charges, sans exécuter Jinka", () => {
   const dom = exemple(35);
   const logement = new JinkaParseur().parser(dom.window.document);
   assert.equal(logement.quartier, "Grenelle");
@@ -57,7 +60,7 @@ test("35 m² : extraction du DOM et des charges, sans exécuter Jinka", () => {
   dom.window.close();
 });
 
-test("37 m² : ignore l'ancienne annonce et l'URL canonique périmée", () => {
+testExemple("37 m² : ignore l'ancienne annonce et l'URL canonique périmée", () => {
   const dom = exemple(37);
   assert.notEqual(new URL(dom.window.document.querySelector('link[rel="canonical"]').href).pathname, dom.window.location.pathname);
   const logement = new JinkaParseur().parser(dom.window.document);
@@ -76,7 +79,7 @@ test("37 m² : ignore l'ancienne annonce et l'URL canonique périmée", () => {
   dom.window.close();
 });
 
-test("Sans quartier affiché, la position de l'annonce donne une estimation", () => {
+testExemple("Sans quartier affiché, la position de l'annonce donne une estimation", () => {
   const dom = exemple(37);
   dom.window.document.querySelector("h1").parentElement.nextElementSibling.querySelector("span:has(svg)").remove();
   const logement = new JinkaParseur().parser(dom.window.document);
@@ -92,7 +95,7 @@ test("Sans quartier ni position, tous les quartiers de l'arrondissement sont con
   assert.equal(resultat.quartiers.length, 4);
 });
 
-test("JSON-LD : JSON malformé, autre annonce et URL étrangère sont ignorés", () => {
+testExemple("JSON-LD : JSON malformé, autre annonce et URL étrangère sont ignorés", () => {
   const dom = exemple(37);
   const script = dom.window.document.createElement("script");
   script.type = "application/ld+json";
@@ -199,7 +202,7 @@ test("Barème incomplet ou surface invalide : aucun verdict affirmatif", () => {
   }
 });
 
-test("Charges absentes : prix affiché pris comme hors charges, hypothèse signalée", () => {
+testExemple("Charges absentes : prix affiché pris comme hors charges, hypothèse signalée", () => {
   const dom = exemple(35);
   const h2 = [...dom.window.document.querySelectorAll("h2")].find((h) => h.textContent === "Description");
   h2.nextElementSibling.textContent = "Rue Fondary, appartement non meublé.";
@@ -241,7 +244,7 @@ test("Dépôt : sans description, uniquement des ressources locales, chargement 
   assert.equal(appels.length, 2);
 });
 
-test("Popup complet : annonce Jinka → fichiers locaux → verdict et texte échappé", async () => {
+testExemple("Popup complet : annonce Jinka → fichiers locaux → verdict et texte échappé", async () => {
   const annonce = exemple(37);
   const logement = new JinkaParseur().parser(annonce.window.document);
   logement.indicesLocalisation.quartier = 'Inconnu <img src=x onerror="alert(1)">';
@@ -312,7 +315,7 @@ test("Détecteur : pas de station sans mot-clé, ni sur « 35 m² »", async () 
   assert.deepEqual(detecteur.detecter("Proche gare de Lyon").stations.map((s) => s.nom), ["Gare de Lyon"]);
 });
 
-test("35 m² sans quartier ni position : la rue Fondary suffit", async (t) => {
+testExemple("35 m² sans quartier ni position : la rue Fondary suffit", async (t) => {
   simulerExtension(t);
   const resultat = await depotAvecLieux().localiser(annonceSansQuartier(35, { sansPosition: true }));
   assert.equal(resultat.statut, "estimee");
@@ -322,7 +325,7 @@ test("35 m² sans quartier ni position : la rue Fondary suffit", async (t) => {
   assert.equal(resultat.position.rayonMetres, 325);
 });
 
-test("37 m² sans quartier ni position : rue de Lourmel près de Charles Michels", async (t) => {
+testExemple("37 m² sans quartier ni position : rue de Lourmel près de Charles Michels", async (t) => {
   simulerExtension(t);
   const resultat = await depotAvecLieux().localiser(annonceSansQuartier(37, { sansPosition: true }));
   // La station est à la limite des deux quartiers traversés par la rue : pas de choix arbitraire.
@@ -333,7 +336,7 @@ test("37 m² sans quartier ni position : rue de Lourmel près de Charles Michels
   assert.ok(GeometrieLocale.distanceEntre(resultat.position.point, [2.286, 48.8465]) < 200);
 });
 
-test("37 m² avec position : les trois indices concordent sur Javel", async (t) => {
+testExemple("37 m² avec position : les trois indices concordent sur Javel", async (t) => {
   simulerExtension(t);
   const resultat = await depotAvecLieux().localiser(annonceSansQuartier(37));
   assert.equal(resultat.statut, "estimee");
@@ -343,7 +346,7 @@ test("37 m² avec position : les trois indices concordent sur Javel", async (t) 
   assert.deepEqual(resultat.indices.map((i) => i.type), ["coordonnees", "rue", "station"]);
 });
 
-test("Quartier affiché : il prime, mais la position profite des rues et stations", async (t) => {
+testExemple("Quartier affiché : il prime, mais la position profite des rues et stations", async (t) => {
   simulerExtension(t);
   const indices = annonceSansQuartier(37, { sansPosition: true });
   const resultat = await depotAvecLieux().localiser({ ...indices, quartier: "Javel" });
@@ -376,7 +379,7 @@ test("Sans aucun indice précis : centre des quartiers possibles, avec un grand 
   assert.equal(resolveur.resoudre(indices()).position, undefined);
 });
 
-test("Hors ligne : la localisation continue avec les indices locaux, et le signale", async (t) => {
+testExemple("Hors ligne : la localisation continue avec les indices locaux, et le signale", async (t) => {
   simulerExtension(t);
   const resultat = await depotAvecLieux(async () => { throw new TypeError("Failed to fetch"); }).localiser(annonceSansQuartier(37));
   assert.equal(resultat.statut, "estimee");

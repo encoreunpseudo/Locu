@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { build } from "esbuild";
@@ -8,6 +8,9 @@ import { Geocodeur } from "../popup/trajets/Geocodeur.ts";
 import { fourchette, prochainDepart } from "../popup/trajets/EstimateurTrajet.ts";
 import { tempsTrajets } from "../popup/tempsMetro.ts";
 import { verifierClePrim } from "../popup/trajets/CleUtilisateur.ts";
+
+// Les pages d'annonces enregistrées (exemplesJinka/) ne sont pas versionnées : sans elles, ces tests sont sautés.
+const testExemple = existsSync("exemplesJinka") ? test : test.skip;
 
 // Réponse PRIM réelle (37 m² rue de Lourmel → 5e), allégée : marche 208 s, métro 10, marche 686 s.
 const reponsePrim = JSON.parse(readFileSync("tests/fixtures/prim-journey.json", "utf8"));
@@ -133,7 +136,7 @@ test("Géocodage : seules les adresses d'Île-de-France sont proposées", async 
   assert.equal(appels.length, 1);
 });
 
-test("Trajets : fourchette par lieu, échec isolé, position trop imprécise", async () => {
+testExemple("Trajets : fourchette par lieu, échec isolé, position trop imprécise", async () => {
   const position = { point: [2.28787, 48.8454], rayonMetres: 150, source: "Position de l'annonce" };
   const client = new ClientPrim("cle", async (url) => url.includes("to=2.000000")
     ? { ok: false, status: 500, json: async () => ({}) }
@@ -200,7 +203,7 @@ async function ouvrirPopup(lieuxEnregistres, appelsPrim = [], { cle = "cle-popup
   return { window, trajets, options };
 }
 
-test("Popup : sans lieu ni clé, invitation à configurer", async () => {
+testExemple("Popup : sans lieu ni clé, invitation à configurer", async () => {
   const { window, trajets, options } = await ouvrirPopup(undefined, [], { cle: "" });
   assert.match(trajets.textContent, /Configurer/);
   assert.match(trajets.textContent, /ta clé PRIM gratuite/);
@@ -209,7 +212,7 @@ test("Popup : sans lieu ni clé, invitation à configurer", async () => {
   window.close();
 });
 
-test("Popup : lieux sans clé, aucun appel PRIM et lien vers les options", async () => {
+testExemple("Popup : lieux sans clé, aucun appel PRIM et lien vers les options", async () => {
   const appels = [];
   const { window, trajets } = await ouvrirPopup([fac], appels, { cle: "" });
   assert.match(trajets.textContent, /Ajouter ma clé/);
@@ -217,14 +220,14 @@ test("Popup : lieux sans clé, aucun appel PRIM et lien vers les options", async
   window.close();
 });
 
-test("Popup : clé refusée, un seul message au lieu d'une erreur par lieu", async () => {
+testExemple("Popup : clé refusée, un seul message au lieu d'une erreur par lieu", async () => {
   const { window, trajets } = await ouvrirPopup([fac, { ...fac, id: "b", nom: "Travail" }], [], { statutPrim: 401 });
   assert.match(trajets.textContent, /Vérifier ma clé/);
   assert.doesNotMatch(trajets.textContent, /Travail/);
   window.close();
 });
 
-test("Popup : temps vers chaque lieu, avec la clé de l'utilisateur et le texte échappé", async () => {
+testExemple("Popup : temps vers chaque lieu, avec la clé de l'utilisateur et le texte échappé", async () => {
   const appels = [];
   const { window, trajets } = await ouvrirPopup([{ ...fac, nom: 'Fac <img src=x onerror="alert(1)">' }], appels);
   assert.match(trajets.textContent, /25–29 min/);

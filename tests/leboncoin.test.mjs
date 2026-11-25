@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { ReferentielQuartiers, ResolveurLocalisation } from "../popup/localisation.ts";
 import { LeboncoinParseur } from "../popup/leboncoinParseur.ts";
 import { JinkaParseur } from "../popup/jinkaParseur.ts";
 import { calculerEncadrement } from "../popup/checkEncadrementLoyers.ts";
+
+// Les pages d'annonces enregistrées (exemplesLBC/) ne sont pas versionnées : sans elles, ces tests sont sautés.
+const testExemple = existsSync("exemplesLBC") ? test : test.skip;
 
 const geojson = JSON.parse(readFileSync("data/logement-encadrement-des-loyers.geojson", "utf8"));
 const baremes = geojson.features.map((f) => f.properties);
@@ -35,7 +38,7 @@ test("Leboncoin : seules les annonces de location sont prises", () => {
   assert.equal(new JinkaParseur().peutParser(new URL("https://www.leboncoin.fr/ad/locations/1")), false);
 });
 
-test("36,50 m² meublé : critères, loyer hors charges du détail du prix, quartier affiché", () => {
+testExemple("36,50 m² meublé : critères, loyer hors charges du détail du prix, quartier affiché", () => {
   const dom = exemple("36,50m2");
   const logement = new LeboncoinParseur().parser(dom.window.document);
   assert.equal(logement.quartier, "Rochechouart");
@@ -59,7 +62,7 @@ test("36,50 m² meublé : critères, loyer hors charges du détail du prix, quar
   dom.window.close();
 });
 
-test("54 m² : année de construction, quartier Leboncoin hors référentiel signalé", () => {
+testExemple("54 m² : année de construction, quartier Leboncoin hors référentiel signalé", () => {
   const dom = exemple("54 m²");
   const logement = new LeboncoinParseur().parser(dom.window.document);
   assert.equal(logement.quartier, "Jules Joffrin");
@@ -76,7 +79,7 @@ test("54 m² : année de construction, quartier Leboncoin hors référentiel sig
   dom.window.close();
 });
 
-test("Sans loyer hors charges détaillé : prix moins les charges prévisionnelles", () => {
+testExemple("Sans loyer hors charges détaillé : prix moins les charges prévisionnelles", () => {
   const dom = exemple("54 m²");
   const doc = dom.window.document;
   [...detailPrix(doc).querySelectorAll("p")].find((p) => p.textContent.trim() === "Loyer hors charges").parentElement.remove();
@@ -86,7 +89,7 @@ test("Sans loyer hors charges détaillé : prix moins les charges prévisionnell
   dom.window.close();
 });
 
-test("Sans détail du prix : charges lues dans la description, sinon hypothèse signalée", () => {
+testExemple("Sans détail du prix : charges lues dans la description, sinon hypothèse signalée", () => {
   const dom = exemple("54 m²");
   const doc = dom.window.document;
   detailPrix(doc).remove();
@@ -102,14 +105,14 @@ test("Sans détail du prix : charges lues dans la description, sinon hypothèse 
   dom.window.close();
 });
 
-test("Encart « Transports à proximité » ajouté au texte, après la description", () => {
+testExemple("Encart « Transports à proximité » ajouté au texte, après la description", () => {
   const dom = exemple("36,50m2");
   const { texte } = new LeboncoinParseur().parser(dom.window.document).indicesLocalisation;
   assert.match(texte, /\nTransports à proximité : Métro Poissonnière ; Métro Cadet ; Métro Le Peletier$/);
   dom.window.close();
 });
 
-test("Encart non rendu (section Localisation hors écran) : texte limité au titre et à la description", () => {
+testExemple("Encart non rendu (section Localisation hors écran) : texte limité au titre et à la description", () => {
   const dom = exemple("54 m²");
   const { texte } = new LeboncoinParseur().parser(dom.window.document).indicesLocalisation;
   assert.doesNotMatch(texte, /Transports à proximité/);
@@ -117,7 +120,7 @@ test("Encart non rendu (section Localisation hors écran) : texte limité au tit
   dom.window.close();
 });
 
-test("Quartier cité dans le texte : il vote, sans écraser les autres indices", () => {
+testExemple("Quartier cité dans le texte : il vote, sans écraser les autres indices", () => {
   const dom = exemple("54 m²");
   const { indicesLocalisation } = new LeboncoinParseur().parser(dom.window.document);
   const resultat = resolveurParis.resoudre(indicesLocalisation);

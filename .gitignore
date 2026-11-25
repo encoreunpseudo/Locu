@@ -3,6 +3,7 @@ dist/
 extension.zip
 .DS_Store
 .tests-*/
-exemplesJinka/*_files/
-exemplesLBC/*_files/
+# Pages d'annonces enregistrées pour les tests, gardées en local
+exemplesJinka/
+exemplesLBC/
 .env
