@@ -10,7 +10,7 @@ import { tempsTrajets } from "../popup/tempsMetro.ts";
 import { verifierClePrim } from "../popup/trajets/CleUtilisateur.ts";
 
 // Les pages d'annonces enregistrées (exemplesJinka/) ne sont pas versionnées : sans elles, ces tests sont sautés.
-const testExemple = existsSync("exemplesJinka") ? test : test.skip;
+const testExemple = existsSync("exemplesJinka") && readdirSync("exemplesJinka").some((n) => n.endsWith(".html")) ? test : test.skip;
 
 // Réponse PRIM réelle (37 m² rue de Lourmel → 5e), allégée : marche 208 s, métro 10, marche 686 s.
 const reponsePrim = JSON.parse(readFileSync("tests/fixtures/prim-journey.json", "utf8"));

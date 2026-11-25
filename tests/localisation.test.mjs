@@ -11,7 +11,7 @@ import { JinkaParseur } from "../popup/jinkaParseur.ts";
 import { calculerEncadrement } from "../popup/checkEncadrementLoyers.ts";
 
 // Les pages d'annonces enregistrées (exemplesJinka/) ne sont pas versionnées : sans elles, ces tests sont sautés.
-const testExemple = existsSync("exemplesJinka") ? test : test.skip;
+const testExemple = existsSync("exemplesJinka") && readdirSync("exemplesJinka").some((n) => n.endsWith(".html")) ? test : test.skip;
 
 const geojson = JSON.parse(readFileSync("data/logement-encadrement-des-loyers.geojson", "utf8"));
 const baremes = geojson.features.map((f) => f.properties);

@@ -3,19 +3,39 @@
   "name": "Mon Extension",
   "version": "1.0.0",
   "description": "Template de base d'extension Chrome (Manifest V3).",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "icons": {
+    "16": "assets/icones-extension/icone-16.png",
+    "32": "assets/icones-extension/icone-32.png",
+    "48": "assets/icones-extension/icone-48.png",
+    "128": "assets/icones-extension/icone-128.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Mon Extension"
+    "default_title": "Mon Extension",
+    "default_icon": {
+      "16": "assets/icones-extension/icone-16.png",
+      "32": "assets/icones-extension/icone-32.png"
+    }
   },
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
-      "css": ["content/content.css"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ],
       "run_at": "document_idle"
     }
   ],
