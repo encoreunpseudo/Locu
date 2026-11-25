@@ -15,11 +15,10 @@ const NOMS_CHAMPS: Record<string, string> = {
   meuble: "meublé / non meublé",
 };
 
-const ICONES: Record<string, string> = { ok: "✓", depasse: "✕", incertain: "?", inconnu: "i" };
-
+// L'icône du verdict (Lucide) est choisie en CSS selon la classe.
 function afficher(classe: string, titre: string, details = "", sousTitre = "") {
   resultatEl.className = `resultat ${classe}`;
-  resultatEl.innerHTML = `<span class="icone">${ICONES[classe] ?? "i"}</span><div><div class="titre">${echapper(titre)}</div>${
+  resultatEl.innerHTML = `<span class="icone" aria-hidden="true"></span><div><div class="titre">${echapper(titre)}</div>${
     sousTitre ? `<div class="sous-titre">${echapper(sousTitre)}</div>` : ""}</div>`;
   detailsEl.innerHTML = details;
 }
@@ -73,6 +72,9 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
       <div class="unite">${euros(f.max)} /m²</div></div>
   </div>`;
 
+  // Tout ce qui suit est replié derrière « Voir le détail » : seuls le verdict et les chiffres clés restent visibles.
+  let detail = "";
+
   // Détail par époque, seulement si elle est inconnue
   if (epoques.length > 1) {
     const rangees = epoques.map((e) => {
@@ -83,7 +85,7 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
       return `<div class="rangee"><span>${LIBELLES_EPOQUES[e.epoque]}</span><span class="montant">${
         plafond != null ? euros(Math.round(plafond)) : `${euros(e.max)} /m²`}</span>${badge}</div>`;
     }).join("");
-    html += `<div class="section"><div class="etiquette">Plafond selon l'année de construction</div>${rangees}</div>`;
+    detail += `<div class="section"><div class="etiquette">Plafond selon l'année de construction</div>${rangees}</div>`;
   }
 
   // Remarques : hypothèses en premier, puis limites des données
@@ -100,7 +102,7 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
   } else {
     remarques.push({ classe: "info", texte: `Barème ${f.annee}.` });
   }
-  html += remarques.map((r) => `<div class="remarque ${r.classe}">${echapper(r.texte)}</div>`).join("");
+  detail += `<div class="remarques">${remarques.map((r) => `<div class="remarque ${r.classe}">${echapper(r.texte)}</div>`).join("")}</div>`;
 
   // Les indices bruts n'intéressent que pour comprendre la localisation : repliés par défaut.
   const technique = f.localisation.indices
@@ -108,8 +110,14 @@ function afficherFourchette(logement: Logement, f: FourchetteEncadrement) {
   const position = f.localisation.position;
   if (position) technique.push(`Position estimée : ${position.source} (à ${position.rayonMetres} m près)`);
   if (technique.length) {
-    html += `<details><summary>Détails de localisation</summary><ul>${technique.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul></details>`;
+    detail += `<details class="localisation"><summary>Détails de localisation</summary><ul>${technique.map((t) => `<li>${echapper(t)}</li>`).join("")}</ul></details>`;
   }
+
+  // Le nombre d'hypothèses reste visible replié : elles peuvent changer le verdict.
+  const hypotheses = remarques.filter((r) => r.classe === "hypothese").length;
+  const compte = hypotheses ? `<span class="compte-hypotheses">${hypotheses} hypothèse${hypotheses > 1 ? "s" : ""}</span>` : "";
+  html += `<details class="plus"><summary><span>Voir le détail</span>${compte}<span class="chevron" aria-hidden="true"></span></summary>` +
+    `<div class="contenu-plus">${detail}</div></details>`;
 
   // Si seule l'époque manque, la réponse utile est « dépasse sauf si construit … ».
   const conformes = epoques.filter((e) => e.depasse === false).map((e) => NOMS_EPOQUES[e.epoque]);

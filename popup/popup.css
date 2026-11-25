@@ -1,106 +1,175 @@
+/*
+ * Style sobre : fond clair, typo Inter, un seul accent, bordures fines.
+ * Signature visuelle : le plan de Paris (OpenStreetMap) en filigrane derrière le contenu.
+ * Le thème sombre suit le réglage du système.
+ */
+@font-face { font-family: "Inter"; font-weight: 400; src: url("../assets/fonts/inter-400.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 500; src: url("../assets/fonts/inter-500.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 600; src: url("../assets/fonts/inter-600.woff2") format("woff2"); }
+
 :root {
-  --fond: #ffffff;
-  --surface: #f6f7f9;
-  --bordure: #e5e7eb;
-  --texte: #111827;
-  --discret: #6b7280;
-  --rouge: #b91c1c;
-  --rouge-fond: #fef2f2;
-  --rouge-bordure: #fecaca;
-  --vert: #15803d;
-  --vert-fond: #f0fdf4;
-  --vert-bordure: #bbf7d0;
-  --ambre: #92400e;
-  --ambre-fond: #fffbeb;
-  --ambre-bordure: #fde68a;
+  --fond: #f7f7f5;
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-pleine: #ffffff;
+  --bordure: #e4e4e0;
+  --texte: #1c1c1a;
+  --discret: #6f6f69;
+  --carte: #1f3a5f;
+  --carte-opacite: 0.07;
+  --accent: #2459d6;
+  --rouge: #b42318;
+  --rouge-fond: #fdf0ee;
+  --rouge-trait: #e5483a;
+  --vert: #136c3a;
+  --vert-fond: #ecf7f0;
+  --vert-trait: #22a05a;
+  --ambre: #8a5300;
+  --ambre-fond: #fdf6e7;
+  --ambre-trait: #e0a019;
+  --neutre-fond: #f1f1ee;
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fond: #18191c;
-    --surface: #222327;
-    --bordure: #33353a;
-    --texte: #f3f4f6;
-    --discret: #9ca3af;
-    --rouge: #fca5a5;
-    --rouge-fond: #2a1416;
-    --rouge-bordure: #5b2125;
-    --vert: #86efac;
-    --vert-fond: #12221a;
-    --vert-bordure: #1f4d33;
-    --ambre: #fcd34d;
-    --ambre-fond: #261e0c;
-    --ambre-bordure: #4d3b12;
+    --fond: #141518;
+    --surface: rgba(28, 30, 34, 0.86);
+    --surface-pleine: #1c1e22;
+    --bordure: #2e3036;
+    --texte: #ececea;
+    --discret: #9a9ca3;
+    --carte: #9fb7d9;
+    --carte-opacite: 0.08;
+    --accent: #7aa2ff;
+    --rouge: #ff9b90;
+    --rouge-fond: rgba(229, 72, 58, 0.12);
+    --vert: #7fdca2;
+    --vert-fond: rgba(34, 160, 90, 0.12);
+    --ambre: #f4c66b;
+    --ambre-fond: rgba(224, 160, 25, 0.12);
+    --neutre-fond: #24262b;
+    color-scheme: dark;
   }
 }
 
 body {
-  width: 340px;
+  position: relative;
+  width: 680px;
+  box-sizing: border-box;
   margin: 0;
-  padding: 16px;
-  font-family: system-ui, -apple-system, sans-serif;
+  padding: 18px 18px 12px;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   font-size: 13px;
-  line-height: 1.4;
+  font-weight: 400;
+  line-height: 1.45;
   color: var(--texte);
   background: var(--fond);
+  -webkit-font-smoothing: antialiased;
 }
 
+/* Plan de Paris en filigrane : un masque colorié par --carte, qui suit donc le thème. */
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--carte);
+  opacity: var(--carte-opacite);
+  -webkit-mask: url("../assets/paris.svg") 60% 40% / 150% auto no-repeat;
+  mask: url("../assets/paris.svg") 60% 40% / 150% auto no-repeat;
+}
+body > * { position: relative; z-index: 1; }
+
 h1 {
-  margin: 0 0 12px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--discret);
 }
+h1::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  -webkit-mask: url("../assets/icones/map-pin.svg") center / contain no-repeat;
+  mask: url("../assets/icones/map-pin.svg") center / contain no-repeat;
+}
 
-/* Verdict */
+/* Deux colonnes : encadrement à gauche, trajets à droite */
+.colonnes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.colonnes:has(.colonne-trajets:empty) { grid-template-columns: minmax(0, 1fr); }
+body:has(.colonne-trajets:empty) { width: 360px; }
+.colonne-trajets {
+  padding: 14px 14px 10px;
+  border: 1px solid var(--bordure);
+  border-radius: 10px;
+  background: var(--surface);
+  backdrop-filter: blur(2px);
+}
+.colonne-trajets:empty { display: none; }
+
+/* Verdict : bandeau à filet coloré */
 .resultat {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: flex-start;
-  padding: 14px;
+  padding: 12px 14px;
   border: 1px solid var(--bordure);
-  border-radius: 12px;
+  border-left: 3px solid var(--discret);
+  border-radius: 8px;
   background: var(--surface);
 }
 
 .resultat .icone {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--fond);
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
   background: var(--discret);
+  -webkit-mask: url("../assets/icones/info.svg") center / contain no-repeat;
+  mask: url("../assets/icones/info.svg") center / contain no-repeat;
 }
 
-.resultat .titre { font-size: 15px; font-weight: 650; }
-.resultat .sous-titre { margin-top: 2px; font-size: 12.5px; }
+.resultat .titre { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.resultat .sous-titre { margin-top: 2px; font-size: 12.5px; color: var(--discret); }
 
-.resultat.depasse { background: var(--rouge-fond); border-color: var(--rouge-bordure); color: var(--rouge); }
-.resultat.depasse .icone { background: var(--rouge); }
-.resultat.ok { background: var(--vert-fond); border-color: var(--vert-bordure); color: var(--vert); }
-.resultat.ok .icone { background: var(--vert); }
-.resultat.incertain { background: var(--ambre-fond); border-color: var(--ambre-bordure); color: var(--ambre); }
-.resultat.incertain .icone { background: var(--ambre); }
+.resultat.depasse { border-left-color: var(--rouge-trait); background: var(--rouge-fond); }
+.resultat.depasse .titre { color: var(--rouge); }
+.resultat.ok { border-left-color: var(--vert-trait); background: var(--vert-fond); }
+.resultat.ok .titre { color: var(--vert); }
+.resultat.incertain { border-left-color: var(--ambre-trait); background: var(--ambre-fond); }
+.resultat.incertain .titre { color: var(--ambre); }
+
+.resultat.depasse .icone { background: var(--rouge); -webkit-mask-image: url("../assets/icones/x.svg"); mask-image: url("../assets/icones/x.svg"); }
+.resultat.ok .icone { background: var(--vert); -webkit-mask-image: url("../assets/icones/check.svg"); mask-image: url("../assets/icones/check.svg"); }
+.resultat.incertain .icone { background: var(--ambre); -webkit-mask-image: url("../assets/icones/circle-help.svg"); mask-image: url("../assets/icones/circle-help.svg"); }
 
 /* Ce qui a été lu dans l'annonce */
 .pastilles {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 12px 0;
+  margin: 14px 0 12px;
 }
 
 .pastilles span {
-  padding: 3px 9px;
+  padding: 2px 9px;
   border: 1px solid var(--bordure);
   border-radius: 999px;
   font-size: 12px;
+  font-weight: 500;
+  background: var(--surface);
 }
 
 /* Loyer face au plafond */
@@ -112,14 +181,15 @@ h1 {
 
 .chiffres > div {
   padding: 10px 12px;
-  border-radius: 10px;
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
   background: var(--surface);
 }
 
 .etiquette {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--discret);
 }
@@ -127,11 +197,13 @@ h1 {
 .valeur {
   margin-top: 2px;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 
-.unite { font-size: 12px; color: var(--discret); }
+.unite { font-size: 12px; color: var(--discret); font-variant-numeric: tabular-nums; }
 
 /* Détail par époque */
 .section { margin-top: 14px; }
@@ -147,51 +219,84 @@ h1 {
 }
 
 .rangee:last-child { border-bottom: none; }
-.montant { font-variant-numeric: tabular-nums; }
+.montant { font-weight: 500; font-variant-numeric: tabular-nums; }
 
 .badge {
   justify-self: end;
-  padding: 2px 7px;
-  border-radius: 6px;
+  padding: 1px 7px;
+  border-radius: 5px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
 .badge.rouge { color: var(--rouge); background: var(--rouge-fond); }
 .badge.vert { color: var(--vert); background: var(--vert-fond); }
-.badge.neutre { color: var(--discret); background: var(--surface); }
+.badge.neutre { color: var(--discret); background: var(--neutre-fond); }
 
 /* Remarques */
 .remarque {
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  margin-top: 6px;
+  padding: 7px 10px;
+  border-radius: 6px;
   font-size: 12px;
   color: var(--discret);
-  background: var(--surface);
+  background: var(--neutre-fond);
 }
 
-.remarque:first-of-type { margin-top: 14px; }
+.remarques { margin-top: 6px; }
 .remarque.hypothese { color: var(--ambre); background: var(--ambre-fond); }
 
-details {
+details.localisation {
   margin-top: 10px;
   font-size: 12px;
   color: var(--discret);
 }
 
-details ul { margin: 6px 0 0; padding-left: 18px; }
+details.localisation ul { margin: 6px 0 0; padding-left: 18px; }
 summary { cursor: pointer; }
 
+/* Détail de l'encadrement, replié par défaut : simple lien avec chevron */
+details.plus { margin-top: 12px; }
+details.plus > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent);
+  list-style: none;
+  user-select: none;
+}
+details.plus > summary::-webkit-details-marker { display: none; }
+details.plus > summary:hover > span:first-child { text-decoration: underline; }
+details.plus > summary .chevron { margin-left: 0; }
+.compte-hypotheses {
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ambre);
+  background: var(--ambre-fond);
+}
+.contenu-plus {
+  margin-top: 6px;
+  padding: 2px 12px 12px;
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.contenu-plus > .section:first-child { margin-top: 10px; }
+
 /* Trajets vers les lieux de l'utilisateur */
-.trajets { padding-top: 12px; border-top: 1px solid var(--bordure); }
+.colonne-trajets .trajets { margin-top: 0; }
 .entete-trajets { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
 .rangee.trajet { grid-template-columns: 1fr auto; row-gap: 6px; }
-.nom-lieu { display: block; font-weight: 600; }
+.nom-lieu { display: block; font-size: 13.5px; font-weight: 600; }
 .detail-trajet { display: block; font-size: 12px; color: var(--discret); }
 .detail-trajet.erreur { color: var(--ambre); text-align: right; }
-.duree { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.duree { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .contexte { margin-top: 6px; font-size: 11.5px; color: var(--discret); }
 
 button.lien {
@@ -200,11 +305,11 @@ button.lien {
   background: none;
   font: inherit;
   font-size: 12px;
-  color: var(--discret);
-  text-decoration: underline;
+  font-weight: 500;
+  color: var(--accent);
   cursor: pointer;
 }
-button.lien:hover { color: var(--texte); }
+button.lien:hover { text-decoration: underline; }
 
 /* Étapes du trajet, façon Citymapper */
 .etapes {
@@ -214,29 +319,29 @@ button.lien:hover { color: var(--texte); }
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 .etape { display: inline-flex; align-items: center; gap: 3px; }
-.fleche { color: var(--discret); font-weight: 400; }
-.picto { width: 20px; height: 20px; display: block; }
+.fleche { color: var(--discret); }
+.picto { width: 18px; height: 18px; display: block; }
 .icone-marche {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   background: currentColor;
   -webkit-mask: url("../data/pictos/marche.svg") center / contain no-repeat;
   mask: url("../data/pictos/marche.svg") center / contain no-repeat;
 }
 .badge-ligne {
-  min-width: 20px;
-  height: 18px;
+  min-width: 18px;
+  height: 17px;
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: 3px;
   display: inline-grid;
   place-items: center;
   box-sizing: border-box;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: #fff;
   background: var(--discret);
 }
@@ -253,21 +358,23 @@ summary.resume-trajet {
   display: grid;
   grid-template-columns: 1fr auto;
   row-gap: 6px;
-  padding: 7px 0;
+  padding: 8px 0;
   list-style: none;
   cursor: pointer;
 }
 summary.resume-trajet::-webkit-details-marker { display: none; }
 .chevron {
   margin-left: auto;
-  width: 7px;
-  height: 7px;
-  border-right: 1.5px solid var(--discret);
-  border-bottom: 1.5px solid var(--discret);
-  transform: rotate(-45deg);
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+  opacity: 0.7;
+  -webkit-mask: url("../assets/icones/chevron-down.svg") center / contain no-repeat;
+  mask: url("../assets/icones/chevron-down.svg") center / contain no-repeat;
   transition: transform 0.15s;
 }
-details[open] .chevron { transform: rotate(45deg); }
+.resume-trajet .chevron { color: var(--discret); }
+details[open] > summary .chevron { transform: rotate(180deg); }
 
 .itineraire { list-style: none; margin: 2px 0 12px; padding: 0; }
 .itineraire li {
@@ -284,20 +391,29 @@ details[open] .chevron { transform: rotate(45deg); }
 }
 .itineraire .rail { align-self: stretch; display: flex; justify-content: center; }
 .arret .point {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   margin: auto 0;
   border: 2px solid var(--texte);
   border-radius: 50%;
   box-sizing: border-box;
-  background: var(--fond);
+  background: var(--surface-pleine);
 }
 .arret.extremite .point { background: var(--texte); }
-.nom-arret { font-size: 12.5px; font-weight: 600; }
-.arret.extremite .nom-arret { font-weight: 700; }
-.troncon .rail::before { content: ""; border-left: 3px dotted var(--discret); }
-.troncon.transport .rail::before { border-left: 4px solid var(--ligne, var(--discret)); border-radius: 2px; }
+.nom-arret { font-size: 12.5px; font-weight: 500; }
+.arret.extremite .nom-arret { font-weight: 600; }
+.troncon .rail::before { content: ""; border-left: 2px dotted var(--discret); }
+.troncon.transport .rail::before { border-left: 3px solid var(--ligne, var(--discret)); border-radius: 2px; }
 .troncon .texte { padding: 7px 0; font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
 .troncon.marche .texte { flex-direction: row; align-items: center; gap: 5px; color: var(--discret); }
 .ligne-titre { display: flex; align-items: center; gap: 6px; font-weight: 500; }
 .sous { color: var(--discret); font-size: 11.5px; }
+
+/* Attribution obligatoire des données OpenStreetMap (ODbL) */
+.credits {
+  margin-top: 12px;
+  font-size: 10px;
+  color: var(--discret);
+  text-align: right;
+  opacity: 0.8;
+}

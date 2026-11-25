@@ -6,11 +6,15 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <h1>Encadrement des loyers · Paris</h1>
-
-  <div id="resultat" class="resultat chargement"><span class="icone">…</span><div><div class="titre">Analyse de l'annonce…</div></div></div>
-  <div id="details"></div>
-  <div id="trajets"></div>
+  <div class="colonnes">
+    <section class="colonne">
+      <h1>Encadrement des loyers · Paris</h1>
+      <div id="resultat" class="resultat chargement"><span class="icone" aria-hidden="true"></span><div><div class="titre">Analyse de l'annonce…</div></div></div>
+      <div id="details"></div>
+    </section>
+    <section class="colonne colonne-trajets" id="trajets"></section>
+  </div>
+  <footer class="credits">Plan © contributeurs OpenStreetMap</footer>
 
   <script src="popup.js"></script>
 </body>

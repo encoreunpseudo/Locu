@@ -16,7 +16,7 @@ await build({
   target: "chrome110",
 });
 
-for (const f of ["manifest.json", "background.js", "popup/popup.html", "popup/popup.css", "content/content.css", "options/options.html", "data/pictos"]) {
+for (const f of ["manifest.json", "background.js", "popup/popup.html", "popup/popup.css", "content/content.css", "options/options.html", "data/pictos", "assets"]) {
   cpSync(f, `dist/${f}`, { recursive: true });
 }
 
